@@ -69,7 +69,7 @@ Testing/
 .cache/
 
 # Private Grok conversation export and machine handoff notes. Never commit.
-/Grok-Are there similar NMRA LCC projects based on Raspberry Pi Pico or Pico 2 W.docx
+/*.docx
 /RESUME.txt
 
 # Tool logs
