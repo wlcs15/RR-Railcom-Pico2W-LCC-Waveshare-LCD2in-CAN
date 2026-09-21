@@ -1,0 +1,8 @@
+Application code in this repository is MIT, copyright Charles L. Sherman, 2026.
+
+Third-party code keeps its own license and is not relicensed by this file:
+
+- Raspberry Pi Pico SDK 2.2.0, BSD-3-Clause. Not vendored. Located with PICO_SDK_PATH.
+- Unity test framework, MIT, under third_party/Unity. Copyright Mike Karlesky, Mark VanderVoord, and Greg Williams.
+
+OpenLcbCLib (BSD-2-Clause) is not vendored yet. Do not copy GPL-3 RailCom detector firmware, or OpenLCB_Single_Thread, into this tree. RailCom stays in another repository.
