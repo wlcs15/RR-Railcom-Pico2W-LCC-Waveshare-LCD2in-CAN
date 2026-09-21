@@ -67,3 +67,9 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Private Grok conversation export. Never commit.
+/Grok-Are there similar NMRA LCC projects based on Raspberry Pi Pico or Pico 2 W.docx
+
+# Tool logs
+local/
