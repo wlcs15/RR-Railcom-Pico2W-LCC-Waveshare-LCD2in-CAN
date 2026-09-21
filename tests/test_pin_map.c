@@ -11,6 +11,8 @@ void tearDown(void) {}
 static void test_assigned_count(void)
 {
     TEST_ASSERT_EQUAL_INT(17, rr_pin_assigned_count());
+    TEST_ASSERT_EQUAL_INT(RR_LCD_DC_GPIO, rr_pin_at(0));
+    TEST_ASSERT_EQUAL_INT(RR_CAN_INT2_GPIO, rr_pin_at(16));
     TEST_ASSERT_EQUAL_INT(-1, rr_pin_at(-1));
     TEST_ASSERT_EQUAL_INT(-1, rr_pin_at(17));
 }
@@ -32,9 +34,30 @@ static void test_lcd_and_can_use_different_spi_pins(void)
 
 static void test_does_not_use_wireless_gpios(void)
 {
+    const int quiet[] = {RR_LCD_DC_GPIO, RR_CAN_CS_GPIO};
+    const int on[] = {RR_WIFI_ON_GPIO};
+    const int data[] = {RR_WIFI_DATA_GPIO};
+    const int cs[] = {RR_WIFI_CS_GPIO};
+    const int clk[] = {RR_WIFI_CLK_GPIO};
+
     TEST_ASSERT_EQUAL_INT(0, rr_pin_uses_wireless_gpio());
-    TEST_ASSERT_EQUAL_INT(23, RR_WIFI_ON_GPIO);
-    TEST_ASSERT_EQUAL_INT(29, RR_WIFI_CLK_GPIO);
+    TEST_ASSERT_EQUAL_INT(0, rr_pins_use_wireless(quiet, 2));
+    TEST_ASSERT_EQUAL_INT(1, rr_pins_use_wireless(on, 1));
+    TEST_ASSERT_EQUAL_INT(1, rr_pins_use_wireless(data, 1));
+    TEST_ASSERT_EQUAL_INT(1, rr_pins_use_wireless(cs, 1));
+    TEST_ASSERT_EQUAL_INT(1, rr_pins_use_wireless(clk, 1));
+}
+
+static void test_conflict_counter_sees_duplicates(void)
+{
+    const int same[] = {RR_LCD_CS_GPIO, RR_LCD_CS_GPIO};
+    const int pair[] = {1, 2, 1};
+    const int none[] = {1, 2, 3};
+
+    TEST_ASSERT_EQUAL_INT(1, rr_count_conflicts(same, 2));
+    TEST_ASSERT_EQUAL_INT(1, rr_count_conflicts(pair, 3));
+    TEST_ASSERT_EQUAL_INT(0, rr_count_conflicts(none, 3));
+    TEST_ASSERT_EQUAL_INT(0, rr_count_conflicts(none, 0));
 }
 
 static void test_key0_default_and_node_id(void)
@@ -50,6 +73,7 @@ int main(void)
     RUN_TEST(test_no_pin_conflicts);
     RUN_TEST(test_lcd_and_can_use_different_spi_pins);
     RUN_TEST(test_does_not_use_wireless_gpios);
+    RUN_TEST(test_conflict_counter_sees_duplicates);
     RUN_TEST(test_key0_default_and_node_id);
     return UNITY_END();
 }

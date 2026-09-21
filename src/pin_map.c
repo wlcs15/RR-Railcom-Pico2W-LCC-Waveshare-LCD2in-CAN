@@ -36,17 +36,16 @@ int rr_pin_at(int index)
     return k_assigned[index];
 }
 
-int rr_pin_conflict_count(void)
+int rr_count_conflicts(const int *pins, int count)
 {
     int conflicts = 0;
-    int count = rr_pin_assigned_count();
     int i;
 
     for (i = 0; i < count; i++) {
         int j;
 
         for (j = i + 1; j < count; j++) {
-            if (k_assigned[i] == k_assigned[j]) {
+            if (pins[i] == pins[j]) {
                 conflicts++;
             }
         }
@@ -54,15 +53,24 @@ int rr_pin_conflict_count(void)
     return conflicts;
 }
 
-int rr_pin_uses_wireless_gpio(void)
+int rr_pins_use_wireless(const int *pins, int count)
 {
-    int count = rr_pin_assigned_count();
     int i;
 
     for (i = 0; i < count; i++) {
-        if (wireless_gpio(k_assigned[i])) {
+        if (wireless_gpio(pins[i])) {
             return 1;
         }
     }
     return 0;
+}
+
+int rr_pin_conflict_count(void)
+{
+    return rr_count_conflicts(k_assigned, rr_pin_assigned_count());
+}
+
+int rr_pin_uses_wireless_gpio(void)
+{
+    return rr_pins_use_wireless(k_assigned, rr_pin_assigned_count());
 }

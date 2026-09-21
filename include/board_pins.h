@@ -47,6 +47,8 @@ _Static_assert(RR_NODE_ID_U64 == 0x05010101A505ULL, "node id must stay 05.01.01.
 
 int rr_pin_assigned_count(void);
 int rr_pin_at(int index);
+int rr_count_conflicts(const int *pins, int count);
+int rr_pins_use_wireless(const int *pins, int count);
 int rr_pin_conflict_count(void);
 int rr_pin_uses_wireless_gpio(void);
 
