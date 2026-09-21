@@ -18,10 +18,15 @@ endif()
 add_library(unity_host STATIC "${ROOT}/third_party/Unity/src/unity.c")
 target_include_directories(unity_host PUBLIC "${ROOT}/third_party/Unity/src")
 
-add_library(pin_map_host STATIC "${ROOT}/src/pin_map.c")
+add_library(pin_map_host STATIC
+    "${ROOT}/src/pin_map.c"
+    "${ROOT}/src/gridconnect.c"
+    "${ROOT}/src/lcc_login.c")
 target_include_directories(pin_map_host PUBLIC "${ROOT}/include")
 
-add_executable(pin_map_tests "${ROOT}/tests/test_pin_map.c")
+add_executable(pin_map_tests
+    "${ROOT}/tests/test_pin_map.c"
+    "${ROOT}/tests/test_lcc.c")
 target_include_directories(pin_map_tests PRIVATE
     "${ROOT}/include"
     "${ROOT}/third_party/Unity/src")
@@ -41,6 +46,8 @@ if(RR_ENABLE_COVERAGE)
     target_compile_options(pin_map_host PRIVATE -fprofile-instr-generate -fcoverage-mapping)
     file(TO_CMAKE_PATH "${CMAKE_BINARY_DIR}" _bin)
     file(TO_CMAKE_PATH "${ROOT}/src/pin_map.c" _pin_src)
+    file(TO_CMAKE_PATH "${ROOT}/src/gridconnect.c" _gc_src)
+    file(TO_CMAKE_PATH "${ROOT}/src/lcc_login.c" _login_src)
     set(_profraw "${_bin}/pin_map_tests.profraw")
     set(_profdata "${_bin}/pin_map_tests.profdata")
     set(_htmldir "${_bin}/coverage")
@@ -54,7 +61,7 @@ if(RR_ENABLE_COVERAGE)
                 "$<TARGET_FILE:pin_map_tests>"
                 "-instr-profile=${_profdata}"
                 "-ignore-filename-regex=third_party|Unity"
-                "${_pin_src}"
+                "${_pin_src}" "${_gc_src}" "${_login_src}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${_htmldir}"
         COMMAND "${LLVM_COV}" show
                 "$<TARGET_FILE:pin_map_tests>"
@@ -62,7 +69,7 @@ if(RR_ENABLE_COVERAGE)
                 -format=html
                 "-output-dir=${_htmldir}"
                 "-ignore-filename-regex=third_party|Unity"
-                "${_pin_src}"
+                "${_pin_src}" "${_gc_src}" "${_login_src}"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         COMMENT "Unity + llvm-cov for src/pin_map.c"
         USES_TERMINAL

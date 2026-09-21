@@ -11,4 +11,4 @@ Firmware:
   Ninja may live at ~/.pico-sdk/ninja/v1.12.1
 
 The host tests use Clang. Do not point them at MinGW gcc.
-The blink image is flashed over the Pico micro-USB port. The three-pin SWD header is not required.
+The LCC image is flashed over the Pico micro-USB port. The three-pin SWD header is not required.

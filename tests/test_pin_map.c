@@ -5,6 +5,8 @@
 #include "board_pins.h"
 #include "unity.h"
 
+void rr_run_lcc_tests(void);
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -75,5 +77,6 @@ int main(void)
     RUN_TEST(test_does_not_use_wireless_gpios);
     RUN_TEST(test_conflict_counter_sees_duplicates);
     RUN_TEST(test_key0_default_and_node_id);
+    rr_run_lcc_tests();
     return UNITY_END();
 }

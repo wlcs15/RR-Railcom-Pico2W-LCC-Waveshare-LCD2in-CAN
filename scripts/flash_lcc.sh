@@ -2,4 +2,4 @@
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-exec bash "$root/scripts/py_launch.sh" "flash_blink.py" "$@"
+exec bash "$root/scripts/py_launch.sh" "flash_lcc.py" "$@"

@@ -2,17 +2,17 @@
 
 OwlThree node **05.01.01.01.A5.05**. This repository is the Pico 2 W LCC node: Wi-Fi GridConnect first, then a Waveshare Pico-LCD-2, then a Waveshare Pico-CAN-B on the same header. Application code is MIT, copyright Charles L. Sherman, 2026. See `NOTICE`.
 
-Tag **v0.01** is steps A through J: USB serial blink and the stacked pin map. That image is already on the headered Pico 2 W. USB serial showed `board pico2_w`, `led cyw43`, node `05.01.01.01.A5.05`, and `pin conflicts 0`. The LED blinks. No HAT is attached, and the three-pin SWD header is not soldered and not required.
+Tag **v0.02** is the Pico 2 W Wi-Fi join. `lcc_node` reads the SSID and password from gitignored `local/wifi_psk_wrap.inc`, prints `TARGET ip`, and listens for GridConnect on TCP port 12021. The SSID is whatever you type into `scripts/provision_wifi.py`. It is not stored in source. No HAT is attached, and the three-pin SWD header is not soldered and not required.
 
-Windows 11 ran the host tests (6 passed), cyclomatic complexity (maximum 5), and llvm-cov (100% of `src/pin_map.c`). Ubuntu x86 has not run those scripts yet. Do that before step K. Nothing in L through Z comes before the Wi-Fi secret check.
+Tag **v0.01** remains steps A through J: USB serial identity and the stacked pin map.
+
+Host Unity tests run on the PC. `scripts/run_target_tests.sh` loads `lcc_node.uf2` and reads the USB self-check when the headered Pico 2 W is plugged in. That script cannot join Wi-Fi until `local/wifi_psk_wrap.inc` exists. The password is wrapped with this board's flash id and Wi-Fi MAC. Do not paste it into chat.
 
 ## What is next
 
-1. On Ubuntu x86, in this repo, run the bash scripts below. That confirms the same build, tests, complexity check, and coverage check that already passed on Windows.
-2. **K.** Join Wi-Fi from a gitignored local header and print the IP address on USB. No HAT. The SSID and password stay out of git and out of chat. This is the LCC-over-Wi-Fi secret mechanism.
-3. **L.** GridConnect TCP listener on port 12021.
-4. **M.** OpenLcbCLib, node `05.01.01.01.A5.05`, a minimal CDI, and one producer/consumer pair.
-5. **N.** Confirm JMRI or another LCC tool sees that node over Wi-Fi.
+1. **K and L are in v0.02.** `python3 scripts/provision_wifi.py` asks for the SSID and the password on a TTY, writes only ciphertext, and the Pico 2 W image joins that network and listens on port 12021.
+2. **M and N are not the A5.01–A5.04 node yet.** The frames are a small login, not OpenMRN and not a full OpenLcbCLib CDI. JMRI Configure will not match those nodes until that stack is linked.
+3. Do not flash the Mega or the RR-CirKits gateway.
 
 Steps O through X wait on parts. O through R are the 2 inch display. S through X are Pico-CAN-B, including stacking headers and soldering the bare Pico 2 W. Y's pin table and the do-not-flash list are already in this file. Z stays in force: RailCom firmware and the RP2350-CAN board are not part of this repository.
 
@@ -20,7 +20,7 @@ Steps O through X wait on parts. O through R are the 2 inch display. S through X
 
 Use the **Waveshare Pico 2 W that already has headers**. Connect its **micro-USB** port to this PC. That is the only cable for these steps.
 
-Do **not** connect the three-pin SWD debug header, and do not use a second USB Debug Probe. Blink and USB serial do not need it.
+Do **not** connect the three-pin SWD debug header, and do not use a second USB Debug Probe. USB serial does not need it.
 
 Leave the Pico 2 W **without headers** unsoldered. Long stacking pins are a later decision, after Pico-CAN-B is in hand (step X).
 
@@ -84,14 +84,15 @@ Firmware outputs:
 
 | Board | UF2 |
 |---|---|
-| `pico2_w` | `build/firmware/pico2_w/blink.uf2` |
-| `pico2` | `build/firmware/pico2/blink.uf2` |
-| `pico_w` | `build/firmware/pico_w/blink.uf2` |
+| `pico2_w` | `build/firmware/pico2_w/lcc_node.uf2` |
+| `pico2` | `build/firmware/pico2/lcc_node.uf2` |
+| `pico_w` | `build/firmware/pico_w/lcc_node.uf2` |
+| `pico` | `build/firmware/pico/lcc_node.uf2` |
 
-Hold BOOTSEL, plug in the headered Pico 2 W, and copy `blink.uf2` to the `RP2350` drive. Or, with picotool and the board already running this firmware:
+Hold BOOTSEL, plug in the headered Pico 2 W, and copy `lcc_node.uf2` to the `RP2350` drive. Or, with picotool and the board already running this firmware:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\flash_blink.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\flash_lcc.ps1
 ```
 
 USB serial is the Pico CDC port. The three-pin debug header is not used.

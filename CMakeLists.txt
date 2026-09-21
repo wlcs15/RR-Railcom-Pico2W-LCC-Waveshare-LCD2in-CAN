@@ -36,28 +36,46 @@ if(NOT RR_KEY0_GPIO MATCHES "^[0-9]+$")
     message(FATAL_ERROR "RR_KEY0_GPIO must be an integer (got '${RR_KEY0_GPIO}')")
 endif()
 
+set(PICO_MBEDTLS_CONFIG_FILE "rr_mbedtls_config.h" CACHE STRING "" FORCE)
 include(pico_sdk_import.cmake)
 project(rr_railcom_pico2w_lcc C CXX ASM)
 pico_sdk_init()
 
-add_executable(blink
-    src/blink.c
-    src/pin_map.c)
-target_include_directories(blink PRIVATE include)
-target_compile_definitions(blink PRIVATE
+set(RR_WIFI_WRAP 0)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local/wifi_psk_wrap.inc")
+    set(RR_WIFI_WRAP 1)
+endif()
+
+add_executable(lcc_node
+    src/lcc_main.c
+    src/pin_map.c
+    src/gridconnect.c
+    src/lcc_login.c)
+target_include_directories(lcc_node PRIVATE include)
+if(RR_WIFI_WRAP)
+    target_include_directories(lcc_node PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/local")
+endif()
+target_compile_definitions(lcc_node PRIVATE
     RR_LCC_TRANSPORT="${LCC_TRANSPORT}"
     RR_LCD_PANEL="${LCD_PANEL}"
     RR_PICO_BOARD="${PICO_BOARD}"
-    RR_KEY0_GPIO=${RR_KEY0_GPIO})
+    RR_KEY0_GPIO=${RR_KEY0_GPIO}
+    RR_WIFI_WRAP=${RR_WIFI_WRAP})
 
-pico_enable_stdio_usb(blink 1)
-pico_enable_stdio_uart(blink 0)
-pico_add_extra_outputs(blink)
+pico_enable_stdio_usb(lcc_node 1)
+pico_enable_stdio_uart(lcc_node 0)
+pico_add_extra_outputs(lcc_node)
 
 if(PICO_CYW43_SUPPORTED)
-    target_compile_definitions(blink PRIVATE RR_LED_CYW43=1)
-    target_link_libraries(blink pico_stdlib pico_cyw43_arch_none)
+    target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=1)
+    target_link_libraries(lcc_node
+        pico_stdlib
+        pico_cyw43_arch_lwip_threadsafe_background)
+    if(RR_WIFI_WRAP)
+        target_compile_definitions(lcc_node PRIVATE MBEDTLS_NO_PLATFORM_ENTROPY)
+        target_link_libraries(lcc_node pico_mbedtls)
+    endif()
 else()
-    target_compile_definitions(blink PRIVATE RR_LED_CYW43=0)
-    target_link_libraries(blink pico_stdlib)
+    target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=0)
+    target_link_libraries(lcc_node pico_stdlib)
 endif()

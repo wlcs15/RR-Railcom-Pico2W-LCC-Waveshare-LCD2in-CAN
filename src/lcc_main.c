@@ -1,0 +1,287 @@
+/*
+ * Copyright (c) 2026 Charles L. Sherman
+ * SPDX-License-Identifier: MIT
+ *
+ * Pico 2 W LCC node 05.01.01.01.A5.05.
+ * Wi-Fi station when a gitignored wrap is present. GridConnect TCP 12021.
+ * No display and no CAN HAT in this image.
+ */
+#include "board_pins.h"
+#include "gridconnect.h"
+#include "lcc_login.h"
+
+#include "pico/stdio_usb.h"
+#include "pico/stdlib.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#if RR_LED_CYW43
+#include "pico/cyw43_arch.h"
+#include "pico/unique_id.h"
+#include "lwip/ip4_addr.h"
+#include "lwip/netif.h"
+#include "lwip/tcp.h"
+#endif
+
+#ifndef RR_LCC_TRANSPORT
+#define RR_LCC_TRANSPORT "WIFI"
+#endif
+#ifndef RR_LCD_PANEL
+#define RR_LCD_PANEL "NONE"
+#endif
+#ifndef RR_PICO_BOARD
+#define RR_PICO_BOARD "unset"
+#endif
+
+#if RR_LED_CYW43 && RR_WIFI_WRAP
+#include "wifi_psk_wrap.inc"
+#include "mbedtls/gcm.h"
+#include "mbedtls/hkdf.h"
+#include "mbedtls/md.h"
+#endif
+
+static char g_login[9 * RR_GC_FRAME_MAX];
+static int g_login_len;
+
+static void print_identity(void)
+{
+    printf("TARGET node 05.01.01.01.A5.05\n");
+    printf("TARGET board %s panel %s transport %s\n",
+           RR_PICO_BOARD, RR_LCD_PANEL, RR_LCC_TRANSPORT);
+    printf("TARGET pin conflicts %d\n", rr_pin_conflict_count());
+    printf("OpenLCB Node ID: 05.01.01.01.A5.05\n");
+}
+
+#if RR_LED_CYW43
+static void print_unique_id(void)
+{
+    pico_unique_board_id_t id;
+    int i;
+
+    pico_get_unique_board_id(&id);
+    printf("SPI flash unique ID: ");
+    for (i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; i++) {
+        printf("%02X", id.id[i]);
+    }
+    printf("\n");
+}
+
+static void print_mac(const uint8_t mac[6])
+{
+    printf("MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\n",
+           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+#if RR_WIFI_WRAP
+static int unwrap_psk(const uint8_t mac[6], char *psk, int psk_cap)
+{
+    pico_unique_board_id_t id;
+    uint8_t ikm[8 + 6 + 6];
+    uint8_t info[5 + 6];
+    uint8_t key[32];
+    uint8_t plain[64];
+    const uint8_t *blob = kWifiWrapBlob;
+    mbedtls_gcm_context gcm;
+    int clen;
+    uint64_t node = RR_NODE_ID_U64;
+    int i;
+
+    if (blob[0] != 1 || psk_cap < 65) {
+        return -1;
+    }
+    pico_get_unique_board_id(&id);
+    memcpy(ikm, id.id, 8);
+    memcpy(ikm + 8, mac, 6);
+    for (i = 5; i >= 0; i--) {
+        ikm[8 + 6 + i] = (uint8_t)(node & 0xFFu);
+        node >>= 8;
+    }
+    info[0] = 0x05;
+    info[1] = 0x01;
+    info[2] = 0x01;
+    info[3] = 0x01;
+    info[4] = 0xA5;
+    memcpy(info + 5, mac, 6);
+    if (mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
+                     (const unsigned char *)"owlthree-pico2w-wifi-wrap-v1", 28,
+                     ikm, sizeof ikm, info, sizeof info, key, sizeof key) != 0) {
+        return -1;
+    }
+    clen = blob[1 + 12 + 16];
+    if (clen <= 0 || clen > 64) {
+        return -1;
+    }
+    mbedtls_gcm_init(&gcm);
+    if (mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, 256) != 0) {
+        mbedtls_gcm_free(&gcm);
+        return -1;
+    }
+    if (mbedtls_gcm_auth_decrypt(&gcm, (size_t)clen, blob + 1, 12, NULL, 0,
+                                 blob + 1 + 12, 16, blob + 1 + 12 + 16 + 1,
+                                 plain) != 0) {
+        mbedtls_gcm_free(&gcm);
+        return -1;
+    }
+    mbedtls_gcm_free(&gcm);
+    memcpy(psk, plain, (size_t)clen);
+    psk[clen] = '\0';
+    memset(plain, 0, sizeof plain);
+    memset(key, 0, sizeof key);
+    return clen;
+}
+#endif
+
+static err_t gc_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
+{
+    (void)arg;
+    (void)pcb;
+    (void)len;
+    return ERR_OK;
+}
+
+static err_t gc_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+{
+    rr_gc_parser parser;
+    char reply[RR_GC_FRAME_MAX];
+    uint32_t identifier = 0;
+    uint8_t data[8];
+    int data_len = 0;
+    int i;
+    uint16_t n;
+
+    (void)arg;
+    (void)err;
+    if (p == NULL) {
+        tcp_close(pcb);
+        return ERR_OK;
+    }
+    tcp_recved(pcb, p->tot_len);
+    rr_gc_parser_init(&parser);
+    for (n = 0; n < p->tot_len; n++) {
+        char byte = (char)pbuf_get_at(p, n);
+        if (!rr_gc_feed(&parser, byte, &identifier, data, &data_len)) {
+            continue;
+        }
+        i = rr_reply_gridconnect(identifier, data, data_len, RR_ALIAS_A505,
+                                 RR_NODE_ID_U64, reply, (int)sizeof reply);
+        if (i > 0) {
+            tcp_write(pcb, reply, (u16_t)i, TCP_WRITE_FLAG_COPY);
+            tcp_output(pcb);
+        }
+    }
+    pbuf_free(p);
+    return ERR_OK;
+}
+
+static err_t gc_accept(void *arg, struct tcp_pcb *pcb, err_t err)
+{
+    (void)arg;
+    if (err != ERR_OK || pcb == NULL) {
+        return ERR_VAL;
+    }
+    tcp_recv(pcb, gc_recv);
+    tcp_sent(pcb, gc_sent);
+    tcp_write(pcb, g_login, (u16_t)g_login_len, TCP_WRITE_FLAG_COPY);
+    tcp_output(pcb);
+    printf("TARGET gridconnect client\n");
+    return ERR_OK;
+}
+
+static int listen_gridconnect(void)
+{
+    struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
+    if (pcb == NULL) {
+        return -1;
+    }
+    if (tcp_bind(pcb, IP_ANY_TYPE, RR_GC_PORT) != ERR_OK) {
+        tcp_close(pcb);
+        return -1;
+    }
+    pcb = tcp_listen(pcb);
+    if (pcb == NULL) {
+        return -1;
+    }
+    tcp_accept(pcb, gc_accept);
+    printf("TARGET gridconnect listen %d\n", RR_GC_PORT);
+    return 0;
+}
+#endif
+
+#if RR_LED_CYW43 && RR_WIFI_WRAP
+static void join_and_listen(const uint8_t mac[6])
+{
+    char psk[65];
+    int pw = unwrap_psk(mac, psk, (int)sizeof psk);
+
+    if (pw < 0) {
+        printf("TARGET wifi unwrap failed\n");
+        return;
+    }
+    if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, psk,
+                                           CYW43_AUTH_WPA2_AES_PSK, 15000) != 0) {
+        printf("TARGET wifi join failed\n");
+        memset(psk, 0, sizeof psk);
+        return;
+    }
+    memset(psk, 0, sizeof psk);
+    printf("TARGET ip %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+    cyw43_arch_lwip_begin();
+    listen_gridconnect();
+    cyw43_arch_lwip_end();
+}
+#endif
+
+#if RR_LED_CYW43
+static void start_radio(void)
+{
+    uint8_t mac[6];
+
+    print_unique_id();
+    if (cyw43_arch_init() != 0) {
+        printf("TARGET cyw43 init failed\n");
+        while (1) {
+            tight_loop_contents();
+        }
+    }
+    cyw43_arch_enable_sta_mode();
+    cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
+    print_mac(mac);
+#if RR_WIFI_WRAP
+    join_and_listen(mac);
+#else
+    printf("TARGET wifi secret missing\n");
+#endif
+}
+#endif
+
+int main(void)
+{
+    stdio_init_all();
+    {
+        int wait = 0;
+        while (!stdio_usb_connected() && wait < 50) {
+            sleep_ms(100);
+            wait++;
+        }
+    }
+    print_identity();
+    g_login_len = rr_login_gridconnect(RR_ALIAS_A505, RR_NODE_ID_U64,
+                                       g_login, (int)sizeof g_login);
+    if (rr_pin_conflict_count() != 0 || rr_pin_uses_wireless_gpio() != 0 || g_login_len < 0) {
+        printf("TARGET pin map rejected\n");
+        while (1) {
+            tight_loop_contents();
+        }
+    }
+#if RR_LED_CYW43
+    start_radio();
+#else
+    printf("TARGET wifi absent\n");
+#endif
+    while (1) {
+        sleep_ms(2000);
+        print_identity();
+    }
+}

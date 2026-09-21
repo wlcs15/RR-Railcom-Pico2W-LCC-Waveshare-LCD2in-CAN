@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Flash blink.uf2 to the Pico 2 W on the main micro-USB port. No SWD probe."""
+"""Flash lcc_node.uf2 to the Pico 2 W on the main micro-USB port. No SWD probe."""
 from __future__ import print_function
 
 import os
@@ -9,7 +9,7 @@ import sys
 import pico_paths
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-UF2 = os.path.join(ROOT, "build", "firmware", "pico2_w", "blink.uf2")
+UF2 = os.path.join(ROOT, "build", "firmware", "pico2_w", "lcc_node.uf2")
 
 
 def main():
