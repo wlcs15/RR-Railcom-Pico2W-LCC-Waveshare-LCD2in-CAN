@@ -73,3 +73,7 @@ Testing/
 
 # Tool logs
 local/
+
+# Python
+__pycache__/
+*.pyc
