@@ -27,6 +27,7 @@ void rr_uart_raw_banner(void);
 #include "pico/cyw43_arch.h"
 #include "pico/unique_id.h"
 #include "lwip/ip4_addr.h"
+#include "lwip/ip_addr.h"
 #include "lwip/netif.h"
 #include "lwip/tcp.h"
 #endif
@@ -43,6 +44,7 @@ void rr_uart_raw_banner(void);
 
 #if RR_LED_CYW43 && RR_WIFI_WRAP
 #include "wifi_psk_wrap.inc"
+#include "hub_host.h"
 #include "mbedtls/gcm.h"
 #include "mbedtls/hkdf.h"
 #include "mbedtls/md.h"
@@ -50,6 +52,8 @@ void rr_uart_raw_banner(void);
 
 static char g_login[9 * RR_GC_FRAME_MAX];
 static int g_login_len;
+static char g_ip_text[20];
+static const char *g_lan_text = "unknown";
 
 #ifdef DEBUG
 #define RR_DBG(...) printf(__VA_ARGS__)
@@ -188,36 +192,40 @@ static err_t gc_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     return ERR_OK;
 }
 
-static err_t gc_accept(void *arg, struct tcp_pcb *pcb, err_t err)
+static err_t gc_connected(void *arg, struct tcp_pcb *pcb, err_t err)
 {
     (void)arg;
     if (err != ERR_OK || pcb == NULL) {
-        return ERR_VAL;
+        printf("TARGET hub connect failed\n");
+        return ERR_ABRT;
     }
     tcp_recv(pcb, gc_recv);
     tcp_sent(pcb, gc_sent);
     tcp_write(pcb, g_login, (u16_t)g_login_len, TCP_WRITE_FLAG_COPY);
     tcp_output(pcb);
-    printf("TARGET gridconnect client\n");
+    printf("TARGET hub connected\n");
     return ERR_OK;
 }
 
-static int listen_gridconnect(void)
+static int dial_hub(void)
 {
-    struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
-    if (pcb == NULL) {
+    ip_addr_t addr;
+    struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_V4);
+
+    if (g_login_len <= 0) {
+        g_login_len = rr_login_gridconnect(RR_ALIAS_A505, RR_NODE_ID_U64,
+                                           g_login, (int)sizeof g_login);
+    }
+    if (pcb == NULL || !ipaddr_aton(RR_HUB_HOST, &addr)) {
+        printf("TARGET hub missing\n");
         return -1;
     }
-    if (tcp_bind(pcb, IP_ANY_TYPE, RR_GC_PORT) != ERR_OK) {
+    printf("TARGET hub dial %s %d\n", RR_HUB_HOST, RR_GC_PORT);
+    if (tcp_connect(pcb, &addr, RR_GC_PORT, gc_connected) != ERR_OK) {
+        printf("TARGET hub connect failed\n");
         tcp_close(pcb);
         return -1;
     }
-    pcb = tcp_listen(pcb);
-    if (pcb == NULL) {
-        return -1;
-    }
-    tcp_accept(pcb, gc_accept);
-    printf("TARGET gridconnect listen %d\n", RR_GC_PORT);
     return 0;
 }
 #endif
@@ -236,13 +244,21 @@ static void join_and_listen(const uint8_t mac[6])
     if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, psk,
                                            CYW43_AUTH_WPA2_AES_PSK, 15000) != 0) {
         printf("TARGET wifi join failed\n");
+        g_lan_text = "wifi join failed";
         memset(psk, 0, sizeof psk);
         return;
     }
     memset(psk, 0, sizeof psk);
-    printf("TARGET ip %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
+    {
+        const ip4_addr_t *ip = netif_ip4_addr(netif_default);
+        snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
+        g_lan_text = (ip4_addr1(ip) == 192 && ip4_addr2(ip) == 168 && ip4_addr3(ip) == 1)
+                         ? "192.168.1 same" : "other";
+        printf("TARGET ip %s\n", g_ip_text);
+        printf("TARGET lan %s\n", g_lan_text);
+    }
     cyw43_arch_lwip_begin();
-    listen_gridconnect();
+    dial_hub();
     cyw43_arch_lwip_end();
 }
 #endif
@@ -322,6 +338,8 @@ static void app_task(void *unused)
         printf("TARGET alive led %s tick %lu\n",
                led_on ? "on" : "off",
                (unsigned long)xTaskGetTickCount());
+        printf("TARGET ip %s\n", g_ip_text[0] ? g_ip_text : "none");
+        printf("TARGET lan %s\n", g_lan_text);
         print_identity();
 #endif
     }

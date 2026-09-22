@@ -4,7 +4,9 @@ OwlThree node **05.01.01.01.A5.05**. This repository is the Pico 2 W LCC node: W
 
 FreeRTOS for the Pico 2 W comes from `~/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel` on branch `pico2w`. That branch checks out the community port `portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ`. The kernel `main` branch does not have that port populated. `FREERTOS_KERNEL_PATH` in the environment is not used, because it points at a different tree. Wi-Fi and the LCC task both run on core 0. `configNUMBER_OF_CORES` is 1. The wireless LED toggles twice a second after the radio starts.
 
-Tag **v0.03** runs that image under FreeRTOS on core 0. UART0 on GP0 (TX) and GP1 (RX) is interrupt-driven with 512-byte rings at 115200. A `DEBUG` build prints `TARGET alive` on that pin. The wireless LED toggles after `cyw43_arch_init` returns. lwIP mailboxes are non-zero so the radio init does not panic. The node still listens on TCP 12021. It does not dial the hub, so JMRI does not list 05.01.01.01.A5.05 yet.
+Tag **v0.04** dials the JMRI hub. The hub address is gitignored `local/hub_host.h` (`RR_HUB_HOST`). On this LAN the Pico prints `TARGET ip 192.168.1.214` and `TARGET lan 192.168.1 same`, and JMRI lists node 05.01.01.01.A5.05. UART0 debug from v0.03 is unchanged.
+
+Tag **v0.03** runs that image under FreeRTOS on core 0. UART0 on GP0 (TX) and GP1 (RX) is interrupt-driven with 512-byte rings at 115200. A `DEBUG` build prints `TARGET alive` on that pin. The wireless LED toggles after `cyw43_arch_init` returns. lwIP mailboxes are non-zero so the radio init does not panic.
 
 Tag **v0.02** is the Pico 2 W Wi-Fi join. `lcc_node` reads the SSID and password from gitignored `local/wifi_psk_wrap.inc`, prints `TARGET ip`, and listens for GridConnect on TCP port 12021. The SSID is whatever you type into `scripts/provision_wifi.py`. It is not stored in source. No HAT is attached, and the three-pin SWD header is not soldered and not required.
 
@@ -15,7 +17,7 @@ Host Unity tests run on the PC. `scripts/run_target_tests.sh` loads `lcc_node.uf
 ## What is next
 
 1. **K and L are in v0.02.** `python3 scripts/provision_wifi.py` asks for the SSID and the password on a TTY, writes only ciphertext, and the Pico 2 W image joins that network and listens on port 12021.
-2. **v0.03 is FreeRTOS plus the UART heartbeat.** The next firmware change is an outbound GridConnect client to the hub on port 12021, then OpenLcbCLib with SNIP, one producer, one consumer, and a CDI. Listing in LCC Pro needs the client and initialization complete. The CDI is what makes Configure match A5.01–A5.04.
+2. **v0.04 dials the hub.** Next is OpenLcbCLib: SNIP, one producer, one consumer, and a CDI so JMRI Configure matches A5.01–A5.04. The 2 inch status screen (Wi-Fi, LCC, JMRI icons) waits on the Pico-LCD-2. Draw that screen in a host preview before the panel arrives. Do not drive SPI until the HAT is seated.
 3. Do not flash the Mega or the RR-CirKits gateway.
 
 Steps O through X wait on parts. O through R are the 2 inch display. S through X are Pico-CAN-B, including stacking headers and soldering the bare Pico 2 W. Y's pin table and the do-not-flash list are already in this file. Z stays in force: RailCom firmware and the RP2350-CAN board are not part of this repository.
