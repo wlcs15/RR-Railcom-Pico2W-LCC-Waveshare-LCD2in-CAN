@@ -93,9 +93,19 @@ static void rr_fill_rect(int x, int y, int w, int h, uint16_t color)
     rr_window(x, y, w, h);
     gpio_put(RR_LCD_DC, 1);
     gpio_put(RR_LCD_CS, 0);
-    while (n > 0) {
-        spi_write_blocking(spi1, pair, 2);
-        n--;
+    {
+        uint8_t chunk[256];
+        int i;
+
+        for (i = 0; i < 128; i++) {
+            chunk[i * 2] = pair[0];
+            chunk[i * 2 + 1] = pair[1];
+        }
+        while (n > 0) {
+            int pixels = n > 128 ? 128 : n;
+            spi_write_blocking(spi1, chunk, (size_t)(pixels * 2));
+            n -= pixels;
+        }
     }
     gpio_put(RR_LCD_CS, 1);
 }
