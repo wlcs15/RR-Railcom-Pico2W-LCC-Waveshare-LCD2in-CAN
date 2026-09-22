@@ -14,9 +14,21 @@ Tag **v0.02** is the Pico 2 W Wi-Fi join. `lcc_node` reads the SSID and password
 
 Tag **v0.01** remains steps A through J: USB serial identity and the stacked pin map.
 
+## Branch pico-w-restouch-3.5
+
+This branch is a preview target only. It will not be merged back into `main`. `main` stays the Pico 2 W LCC node, with the stacked pin map for the 2 inch LCD and Pico-CAN-B.
+
+The preview hardware is a Raspberry Pi Pico W (`pico_w`) plus the Waveshare Pico-ResTouch-LCD-3.5 (ILI9488 and XPT2046 touch). That HAT uses GP5 and GP21, which are the Pico-CAN-B chip-select and interrupt, so this branch is Wi-Fi only. Configure must keep refusing `LCC_TRANSPORT=CAN` or `BOTH` for this panel. The 3.5 inch pin table and display driver stay on this branch. Do not change the Pico 2 W pin table to make the preview compile.
+
+The panel is 480×320 pixels, the same count as the A5.01 ESP32 ILI9486 UI in `Arduino_Wemos_TTgo_D1_R32_ESPDuino-32_Waveshare_4inch_OpenMRN_WiFi`. The Pico slideshow demo treats that glass as portrait 320×480. This preview uses landscape 480×320 so the A5.01 icon geometry lines up. Those icons are the draw routines in `main/ili9486_min.cpp` (Wi-Fi bars about 32×28, LCC and JMRI labels in 36-pixel slots from the right edge). They are not bitmap files. The 2 inch panel is still 320×240 with four buttons and no touch, so this layout is a readable-text check, not a stand-in for that module.
+
+Flash this branch only onto the Pico W with the 3.5 inch HAT. Do not flash it onto the Pico 2 W.
+
 Host Unity tests run on the PC. `scripts/run_target_tests.sh` loads `lcc_node.uf2` and reads the USB self-check when the headered Pico 2 W is plugged in. That script cannot join Wi-Fi until `local/wifi_psk_wrap.inc` exists. The password is wrapped with this board's flash id and Wi-Fi MAC. Do not paste it into chat.
 
 ## What is next
+
+On this branch, the next work is the Pico W plus 3.5 inch preview above. Do not bring that driver back to `main`.
 
 1. **K and L are in v0.02.** `python3 scripts/provision_wifi.py` asks for the SSID and the password on a TTY, writes only ciphertext, and the Pico 2 W image joins that network and listens on port 12021.
 2. **v0.04 dials the hub.** Next is OpenLcbCLib: SNIP, one producer, one consumer, and a CDI so JMRI Configure matches A5.01–A5.04. The 2 inch status screen (Wi-Fi, LCC, JMRI icons) waits on the Pico-LCD-2. Draw that screen in a host preview before the panel arrives. Do not drive SPI until the HAT is seated.
