@@ -86,6 +86,19 @@ if (-not $changes) {
     $changes | ForEach-Object { Write-Host $_ }
 }
 
+Write-Host "Friendly names:"
+foreach ($entry in $entries) {
+    $port = (Get-ItemProperty -Path $entry.Path -Name PortName -ErrorAction SilentlyContinue).PortName
+    $current = (Get-ItemProperty -Path $entry.Key -Name FriendlyName -ErrorAction SilentlyContinue).FriendlyName
+    if (-not $current -or -not $port) { continue }
+    if ($current -notmatch '\(COM\d+\)') { continue }
+    $updated = $current -replace '\(COM\d+\)', "($port)"
+    if ($updated -ne $current) {
+        Set-ItemProperty -Path $entry.Key -Name FriendlyName -Value $updated
+        Write-Host "  $current -> $updated"
+    }
+}
+
 $present = @(Get-PnpDevice -Class Ports -PresentOnly -ErrorAction SilentlyContinue)
 foreach ($device in $present) {
     if ($device.InstanceId -match "VID_0483&PID_5740|VID_2E8A&PID_0009|VID_2E8A&PID_000A|VID_1A86&PID_55D3") {

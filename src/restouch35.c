@@ -126,11 +126,11 @@ static void rr_panel_on(void)
     static const uint8_t b6[] = {0x62};
 
     gpio_put(RR_LCD_RST, 1);
-    sleep_ms(20);
+    sleep_ms(50);
     gpio_put(RR_LCD_RST, 0);
-    sleep_ms(20);
+    sleep_ms(50);
     gpio_put(RR_LCD_RST, 1);
-    sleep_ms(120);
+    sleep_ms(150);
     rr_cmd(0x21);
     rr_cmd_bytes(0xC2, c2, 1);
     rr_cmd_bytes(0xC5, c5, 3);
@@ -278,12 +278,14 @@ void rr_restouch_init(void)
     rr_gpio_out(RR_LCD_DC, 1);
     rr_gpio_out(RR_LCD_RST, 1);
     rr_gpio_out(RR_LCD_BL, 1);
-    spi_init(spi1, 20000000);
+    spi_init(spi1, 4000000);
     gpio_set_function(RR_LCD_SCK, GPIO_FUNC_SPI);
     gpio_set_function(RR_LCD_MOSI, GPIO_FUNC_SPI);
     gpio_set_function(RR_LCD_MISO, GPIO_FUNC_SPI);
     rr_panel_on();
-    rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0x0000);
+    rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0x0010);
+    rr_fill_rect(0, 40, RR_LCD_W, 36, 0xFFE0);
+    rr_draw_text(8, 50, "A505", 0x0000, 0xFFE0);
 }
 
 void rr_restouch_status(int wifi, int lcc, int jmri)
