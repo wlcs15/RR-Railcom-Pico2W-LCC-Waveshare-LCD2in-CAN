@@ -71,6 +71,7 @@ Testing/
 # Private Grok conversation export and machine handoff notes. Never commit.
 /*.docx
 /RESUME.txt
+/NOTES.txt
 
 # Tool logs
 local/
