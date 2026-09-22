@@ -22,7 +22,7 @@ The preview hardware is a Raspberry Pi Pico W (`pico_w`) plus the Waveshare Pico
 
 The panel is 480×320 pixels, the same count as the A5.01 ESP32 ILI9486 UI in `Arduino_Wemos_TTgo_D1_R32_ESPDuino-32_Waveshare_4inch_OpenMRN_WiFi`. The Pico slideshow demo treats that glass as portrait 320×480. This preview uses landscape 480×320 so the A5.01 icon geometry lines up. Those icons are the draw routines in `main/ili9486_min.cpp` (Wi-Fi bars about 32×28, LCC and JMRI labels in 36-pixel slots from the right edge). They are not bitmap files. The 2 inch panel is still 320×240 with four buttons and no touch, so this layout is a readable-text check, not a stand-in for that module.
 
-Flash this branch only onto the Pico W with the 3.5 inch HAT. Do not flash it onto the Pico 2 W.
+Flash this branch only onto the Pico W with the 3.5 inch HAT. Do not flash it onto the Pico 2 W. The preview image is `build/firmware/pico_w_restouch/lcc_node.uf2` (`PICO_BOARD=pico_w`, `LCD_PANEL=RES35`, `LCC_TRANSPORT=WIFI`). It draws the Wi-Fi and LCC icons from the live station and hub connection. The JMRI icon stays dim because port 12080 is not probed. Touch is not read. The Wi-Fi secret wrapped for the Pico 2 W will not unwrap on this Pico W, so that board needs its own `local/wifi_psk_wrap.inc` before the Wi-Fi icon can turn green.
 
 Host Unity tests run on the PC. `scripts/run_target_tests.sh` loads `lcc_node.uf2` and reads the USB self-check when the headered Pico 2 W is plugged in. That script cannot join Wi-Fi until `local/wifi_psk_wrap.inc` exists. The password is wrapped with this board's flash id and Wi-Fi MAC. Do not paste it into chat.
 

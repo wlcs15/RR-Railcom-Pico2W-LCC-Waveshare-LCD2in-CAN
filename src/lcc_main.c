@@ -10,6 +10,7 @@
 #include "gridconnect.h"
 #include "lcc_login.h"
 #include "lcc_node_services.h"
+#include "restouch35.h"
 
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
@@ -55,6 +56,18 @@ static char g_login[9 * RR_GC_FRAME_MAX];
 static int g_login_len;
 static char g_ip_text[20];
 static const char *g_lan_text = "unknown";
+static volatile int g_wifi_icon = RR_WIFI_ICON_OFF;
+static volatile int g_lcc_icon = RR_SVC_ICON_DIM;
+
+#if RR_PANEL_RES35
+static void panel_show(void)
+{
+    /* JMRI web port 12080 is not probed. That icon stays dim. Touch is not read. */
+    rr_restouch_status(g_wifi_icon, g_lcc_icon, RR_SVC_ICON_DIM);
+}
+#else
+static void panel_show(void) {}
+#endif
 
 #ifdef DEBUG
 #define RR_DBG(...) printf(__VA_ARGS__)
@@ -202,6 +215,7 @@ static err_t gc_connected(void *arg, struct tcp_pcb *pcb, err_t err)
     (void)arg;
     if (err != ERR_OK || pcb == NULL) {
         printf("TARGET hub connect failed\n");
+        g_lcc_icon = RR_SVC_ICON_FAIL;
         return ERR_ABRT;
     }
     tcp_recv(pcb, gc_recv);
@@ -209,6 +223,7 @@ static err_t gc_connected(void *arg, struct tcp_pcb *pcb, err_t err)
     tcp_write(pcb, g_login, (u16_t)g_login_len, TCP_WRITE_FLAG_COPY);
     tcp_output(pcb);
     printf("TARGET hub connected\n");
+    g_lcc_icon = RR_SVC_ICON_OK;
     return ERR_OK;
 }
 
@@ -223,11 +238,13 @@ static int dial_hub(void)
     }
     if (pcb == NULL || !ipaddr_aton(RR_HUB_HOST, &addr)) {
         printf("TARGET hub missing\n");
+        g_lcc_icon = RR_SVC_ICON_FAIL;
         return -1;
     }
     printf("TARGET hub dial %s %d\n", RR_HUB_HOST, RR_GC_PORT);
     if (tcp_connect(pcb, &addr, RR_GC_PORT, gc_connected) != ERR_OK) {
         printf("TARGET hub connect failed\n");
+        g_lcc_icon = RR_SVC_ICON_FAIL;
         tcp_close(pcb);
         return -1;
     }
@@ -243,13 +260,18 @@ static void join_and_listen(const uint8_t mac[6])
 
     if (pw < 0) {
         printf("TARGET wifi unwrap failed\n");
+        g_wifi_icon = RR_WIFI_ICON_FAIL;
+        g_lcc_icon = RR_SVC_ICON_FAIL;
         return;
     }
+    g_wifi_icon = RR_WIFI_ICON_SEARCH;
     RR_DBG("TARGET wifi join start\n");
     if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, psk,
                                            CYW43_AUTH_WPA2_AES_PSK, 15000) != 0) {
         printf("TARGET wifi join failed\n");
         g_lan_text = "wifi join failed";
+        g_wifi_icon = RR_WIFI_ICON_FAIL;
+        g_lcc_icon = RR_SVC_ICON_FAIL;
         memset(psk, 0, sizeof psk);
         return;
     }
@@ -261,6 +283,7 @@ static void join_and_listen(const uint8_t mac[6])
                          ? "192.168.1 same" : "other";
         printf("TARGET ip %s\n", g_ip_text);
         printf("TARGET lan %s\n", g_lan_text);
+        g_wifi_icon = RR_WIFI_ICON_OK;
     }
     cyw43_arch_lwip_begin();
     dial_hub();
@@ -287,9 +310,12 @@ static void start_radio(void)
     cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
     print_mac(mac);
 #if RR_WIFI_WRAP
+    g_wifi_icon = RR_WIFI_ICON_SEARCH;
     join_and_listen(mac);
 #else
     printf("TARGET wifi secret missing\n");
+    g_wifi_icon = RR_WIFI_ICON_FAIL;
+    g_lcc_icon = RR_SVC_ICON_FAIL;
 #endif
 #ifdef DEBUG
     g_led_ready = 1;
@@ -311,10 +337,13 @@ static int checks_ok(void)
     return 1;
 }
 
-static void app_task(void *unused)
+static void start_board(void)
 {
-    (void)unused;
-    printf("TARGET task\n");
+#if RR_PANEL_RES35
+    rr_restouch_init();
+    g_wifi_icon = RR_WIFI_ICON_SEARCH;
+    panel_show();
+#endif
 #if RR_LED_CYW43
     start_radio();
 #else
@@ -325,6 +354,36 @@ static void app_task(void *unused)
     g_led_ready = 1;
 #endif
 #endif
+}
+
+static void blink_led(int led_on)
+{
+#if RR_LED_CYW43
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
+#else
+    gpio_put(PICO_DEFAULT_LED_PIN, led_on);
+#endif
+}
+
+static void debug_beat(int led_on)
+{
+#ifdef DEBUG
+    printf("TARGET alive led %s tick %lu\n",
+           led_on ? "on" : "off",
+           (unsigned long)xTaskGetTickCount());
+    printf("TARGET ip %s\n", g_ip_text[0] ? g_ip_text : "none");
+    printf("TARGET lan %s\n", g_lan_text);
+    print_identity();
+#else
+    (void)led_on;
+#endif
+}
+
+static void app_task(void *unused)
+{
+    (void)unused;
+    printf("TARGET task\n");
+    start_board();
     if (!checks_ok()) {
         while (1) {
             tight_loop_contents();
@@ -332,21 +391,12 @@ static void app_task(void *unused)
     }
     while (1) {
         static int led_on = 0;
+
+        panel_show();
         led_on = !led_on;
-#if RR_LED_CYW43
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
-#else
-        gpio_put(PICO_DEFAULT_LED_PIN, led_on);
-#endif
+        blink_led(led_on);
+        debug_beat(led_on);
         vTaskDelay(pdMS_TO_TICKS(500));
-#ifdef DEBUG
-        printf("TARGET alive led %s tick %lu\n",
-               led_on ? "on" : "off",
-               (unsigned long)xTaskGetTickCount());
-        printf("TARGET ip %s\n", g_ip_text[0] ? g_ip_text : "none");
-        printf("TARGET lan %s\n", g_lan_text);
-        print_identity();
-#endif
     }
 }
 
