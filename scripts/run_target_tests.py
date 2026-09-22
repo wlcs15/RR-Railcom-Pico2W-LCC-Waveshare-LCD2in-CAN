@@ -13,8 +13,10 @@ import pico_paths
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UF2 = os.path.join(ROOT, "build", "firmware", "pico2_w", "lcc_node.uf2")
 NEEDLES = (
+    "TARGET boot",
     "TARGET node 05.01.01.01.A5.05",
     "TARGET pin conflicts 0",
+    "TARGET unity ok",
     "OpenLCB Node ID: 05.01.01.01.A5.05",
 )
 
@@ -70,8 +72,13 @@ def main():
     loaded = subprocess.call([tool, "load", "-f", "-x", UF2], env=env)
     if loaded != 0:
         return loaded
-    time.sleep(2)
-    text = _read_serial(20)
+    print("serial ports: %s" % ", ".join(_ports()))
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        if any("Pico" in path or "RP2350" in path for path in _ports()):
+            break
+        time.sleep(0.2)
+    text = _read_serial(25)
     sys.stdout.write(text)
     missing = [line for line in NEEDLES if line not in text]
     if missing:

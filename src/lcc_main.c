@@ -13,6 +13,13 @@
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+int rr_run_all_tests(void);
+void rr_uart_ring_init(void);
+void rr_uart_raw_banner(void);
+
 #include <stdio.h>
 #include <string.h>
 
@@ -43,6 +50,13 @@
 
 static char g_login[9 * RR_GC_FRAME_MAX];
 static int g_login_len;
+
+#ifdef DEBUG
+#define RR_DBG(...) printf(__VA_ARGS__)
+static volatile int g_led_ready;
+#else
+#define RR_DBG(...) ((void)0)
+#endif
 
 static void print_identity(void)
 {
@@ -218,6 +232,7 @@ static void join_and_listen(const uint8_t mac[6])
         printf("TARGET wifi unwrap failed\n");
         return;
     }
+    RR_DBG("TARGET wifi join start\n");
     if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, psk,
                                            CYW43_AUTH_WPA2_AES_PSK, 15000) != 0) {
         printf("TARGET wifi join failed\n");
@@ -226,7 +241,6 @@ static void join_and_listen(const uint8_t mac[6])
     }
     memset(psk, 0, sizeof psk);
     printf("TARGET ip %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     cyw43_arch_lwip_begin();
     listen_gridconnect();
     cyw43_arch_lwip_end();
@@ -239,12 +253,15 @@ static void start_radio(void)
     uint8_t mac[6];
 
     print_unique_id();
+    printf("TARGET radio start\n");
     if (cyw43_arch_init() != 0) {
         printf("TARGET cyw43 init failed\n");
         while (1) {
             tight_loop_contents();
         }
     }
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+    RR_DBG("TARGET radio up\n");
     cyw43_arch_enable_sta_mode();
     cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
     print_mac(mac);
@@ -253,35 +270,95 @@ static void start_radio(void)
 #else
     printf("TARGET wifi secret missing\n");
 #endif
+#ifdef DEBUG
+    g_led_ready = 1;
+#endif
+}
+#endif
+
+static int checks_ok(void)
+{
+    print_identity();
+    printf("TARGET rtos freertos\n");
+    printf("TARGET unity %s\n", rr_run_all_tests() == 0 ? "ok" : "fail");
+    g_login_len = rr_login_gridconnect(RR_ALIAS_A505, RR_NODE_ID_U64,
+                                       g_login, (int)sizeof g_login);
+    if (rr_pin_conflict_count() != 0 || rr_pin_uses_wireless_gpio() != 0 || g_login_len < 0) {
+        printf("TARGET pin map rejected\n");
+        return 0;
+    }
+    return 1;
+}
+
+static void app_task(void *unused)
+{
+    (void)unused;
+    printf("TARGET task\n");
+#if RR_LED_CYW43
+    start_radio();
+#else
+    printf("TARGET wifi absent\n");
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#ifdef DEBUG
+    g_led_ready = 1;
+#endif
+#endif
+    if (!checks_ok()) {
+        while (1) {
+            tight_loop_contents();
+        }
+    }
+    while (1) {
+        static int led_on = 0;
+        led_on = !led_on;
+#if RR_LED_CYW43
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
+#else
+        gpio_put(PICO_DEFAULT_LED_PIN, led_on);
+#endif
+        vTaskDelay(pdMS_TO_TICKS(500));
+#ifdef DEBUG
+        printf("TARGET alive led %s tick %lu\n",
+               led_on ? "on" : "off",
+               (unsigned long)xTaskGetTickCount());
+        print_identity();
+#endif
+    }
+}
+
+#ifdef DEBUG
+static void alive_task(void *unused)
+{
+    unsigned long beat = 0;
+
+    (void)unused;
+    while (!g_led_ready) {
+        beat++;
+        printf("TARGET alive %lu led wait-radio tick %lu uart0 GP0\n",
+               beat, (unsigned long)xTaskGetTickCount());
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 }
 #endif
 
 int main(void)
 {
+    rr_uart_raw_banner();
     stdio_init_all();
-    {
-        int wait = 0;
-        while (!stdio_usb_connected() && wait < 50) {
-            sleep_ms(100);
-            wait++;
-        }
+    rr_uart_ring_init();
+    printf("TARGET boot\n");
+    RR_DBG("TARGET debug uart0 115200 GP0-TX GP1-RX\n");
+#ifdef DEBUG
+    if (xTaskCreate(alive_task, "alive", 1024, 0, 1, 0) != pdPASS) {
+        printf("TARGET alive task failed\n");
     }
-    print_identity();
-    g_login_len = rr_login_gridconnect(RR_ALIAS_A505, RR_NODE_ID_U64,
-                                       g_login, (int)sizeof g_login);
-    if (rr_pin_conflict_count() != 0 || rr_pin_uses_wireless_gpio() != 0 || g_login_len < 0) {
-        printf("TARGET pin map rejected\n");
-        while (1) {
-            tight_loop_contents();
-        }
-    }
-#if RR_LED_CYW43
-    start_radio();
-#else
-    printf("TARGET wifi absent\n");
 #endif
+    if (xTaskCreate(app_task, "lcc", 8192, 0, 1, 0) != pdPASS) {
+        printf("TARGET task create failed\n");
+    }
+    vTaskStartScheduler();
     while (1) {
-        sleep_ms(2000);
-        print_identity();
+        tight_loop_contents();
     }
 }

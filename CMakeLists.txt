@@ -41,6 +41,17 @@ include(pico_sdk_import.cmake)
 project(rr_railcom_pico2w_lcc C CXX ASM)
 pico_sdk_init()
 
+set(FREERTOS_KERNEL_PATH "$ENV{HOME}/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel" CACHE PATH "Pico 2 W kernel branch" FORCE)
+if(PICO_RP2350)
+    set(RR_FREERTOS_PORT "${FREERTOS_KERNEL_PATH}/portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ")
+else()
+    set(RR_FREERTOS_PORT "${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040")
+endif()
+if(NOT EXISTS "${RR_FREERTOS_PORT}/library.cmake")
+    message(FATAL_ERROR "FreeRTOS port missing at ${RR_FREERTOS_PORT}. On the pico2w branch run: git submodule update --init portable/ThirdParty/Community-Supported-Ports")
+endif()
+add_subdirectory("${RR_FREERTOS_PORT}" freertos_kernel)
+
 set(RR_WIFI_WRAP 0)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local/wifi_psk_wrap.inc")
     set(RR_WIFI_WRAP 1)
@@ -48,10 +59,14 @@ endif()
 
 add_executable(lcc_node
     src/lcc_main.c
+    src/uart_ring.c
     src/pin_map.c
     src/gridconnect.c
-    src/lcc_login.c)
-target_include_directories(lcc_node PRIVATE include)
+    src/lcc_login.c
+    tests/test_pin_map.c
+    tests/test_lcc.c
+    third_party/Unity/src/unity.c)
+target_include_directories(lcc_node PRIVATE include third_party/Unity/src)
 if(RR_WIFI_WRAP)
     target_include_directories(lcc_node PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/local")
 endif()
@@ -60,7 +75,9 @@ target_compile_definitions(lcc_node PRIVATE
     RR_LCD_PANEL="${LCD_PANEL}"
     RR_PICO_BOARD="${PICO_BOARD}"
     RR_KEY0_GPIO=${RR_KEY0_GPIO}
-    RR_WIFI_WRAP=${RR_WIFI_WRAP})
+    RR_WIFI_WRAP=${RR_WIFI_WRAP}
+    RR_FIRMWARE_TESTS=1
+    DEBUG)
 
 pico_enable_stdio_usb(lcc_node 1)
 pico_enable_stdio_uart(lcc_node 0)
@@ -70,12 +87,13 @@ if(PICO_CYW43_SUPPORTED)
     target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=1)
     target_link_libraries(lcc_node
         pico_stdlib
-        pico_cyw43_arch_lwip_threadsafe_background)
+        pico_cyw43_arch_lwip_sys_freertos
+        FreeRTOS-Kernel-Heap4)
     if(RR_WIFI_WRAP)
         target_compile_definitions(lcc_node PRIVATE MBEDTLS_NO_PLATFORM_ENTROPY)
         target_link_libraries(lcc_node pico_mbedtls)
     endif()
 else()
     target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=0)
-    target_link_libraries(lcc_node pico_stdlib)
+    target_link_libraries(lcc_node pico_stdlib FreeRTOS-Kernel-Heap4)
 endif()

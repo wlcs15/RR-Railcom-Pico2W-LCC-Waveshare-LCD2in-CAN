@@ -68,7 +68,7 @@ static void test_key0_default_and_node_id(void)
     TEST_ASSERT_EQUAL_UINT64(0x05010101A505ULL, (unsigned long long)RR_NODE_ID_U64);
 }
 
-int main(void)
+int rr_run_all_tests(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_assigned_count);
@@ -80,3 +80,10 @@ int main(void)
     rr_run_lcc_tests();
     return UNITY_END();
 }
+
+#ifndef RR_FIRMWARE_TESTS
+int main(void)
+{
+    return rr_run_all_tests();
+}
+#endif

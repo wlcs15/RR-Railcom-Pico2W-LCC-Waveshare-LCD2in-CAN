@@ -8,9 +8,22 @@
 #ifndef RR_LWIPOPTS_H
 #define RR_LWIPOPTS_H
 
-#define NO_SYS                      1
-#define LWIP_SOCKET                 0
+#define LWIP_TIMEVAL_PRIVATE        0
+#define NO_SYS                      0
+#define LWIP_SOCKET                 1
+#define LWIP_NETCONN                1
+#define LWIP_COMPAT_SOCKETS         1
+#define LWIP_TCPIP_CORE_LOCKING     1
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 1
 #define MEM_LIBC_MALLOC             0
+#define TCPIP_THREAD_STACKSIZE      2048
+#define TCPIP_THREAD_PRIO           4
+#define TCPIP_MBOX_SIZE             16
+#define DEFAULT_RAW_RECVMBOX_SIZE   8
+#define DEFAULT_UDP_RECVMBOX_SIZE   8
+#define DEFAULT_TCP_RECVMBOX_SIZE   8
+#define DEFAULT_ACCEPTMBOX_SIZE     8
+#define DEFAULT_THREAD_STACKSIZE    1024
 #define MEM_ALIGNMENT               4
 #define MEM_SIZE                    4000
 #define MEMP_NUM_TCP_SEG            32
