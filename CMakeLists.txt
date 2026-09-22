@@ -63,6 +63,7 @@ add_executable(lcc_node
     src/pin_map.c
     src/gridconnect.c
     src/lcc_login.c
+    src/lcc_node_services.c
     tests/test_pin_map.c
     tests/test_lcc.c
     third_party/Unity/src/unity.c)

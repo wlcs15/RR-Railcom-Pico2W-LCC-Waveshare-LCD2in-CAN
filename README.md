@@ -4,6 +4,8 @@ OwlThree node **05.01.01.01.A5.05**. This repository is the Pico 2 W LCC node: W
 
 FreeRTOS for the Pico 2 W comes from `~/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel` on branch `pico2w`. That branch checks out the community port `portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ`. The kernel `main` branch does not have that port populated. `FREERTOS_KERNEL_PATH` in the environment is not used, because it points at a different tree. Wi-Fi and the LCC task both run on core 0. `configNUMBER_OF_CORES` is 1. The wireless LED toggles twice a second after the radio starts.
 
+Tag **v0.05** answers SNIP, protocol support, and a flash-resident CDI, and raises host line coverage of the shared sources above 80% (about 90% lines). The same Unity tests are compiled into the Pico image. Configure opens on an identification page. Writable RailCom segments wait.
+
 Tag **v0.04** dials the JMRI hub. The hub address is gitignored `local/hub_host.h` (`RR_HUB_HOST`). On this LAN the Pico prints `TARGET ip 192.168.1.214` and `TARGET lan 192.168.1 same`, and JMRI lists node 05.01.01.01.A5.05. UART0 debug from v0.03 is unchanged.
 
 Tag **v0.03** runs that image under FreeRTOS on core 0. UART0 on GP0 (TX) and GP1 (RX) is interrupt-driven with 512-byte rings at 115200. A `DEBUG` build prints `TARGET alive` on that pin. The wireless LED toggles after `cyw43_arch_init` returns. lwIP mailboxes are non-zero so the radio init does not panic.

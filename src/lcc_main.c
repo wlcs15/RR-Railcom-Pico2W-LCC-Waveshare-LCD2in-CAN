@@ -9,6 +9,7 @@
 #include "board_pins.h"
 #include "gridconnect.h"
 #include "lcc_login.h"
+#include "lcc_node_services.h"
 
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
@@ -161,7 +162,7 @@ static err_t gc_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
 static err_t gc_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
     rr_gc_parser parser;
-    char reply[RR_GC_FRAME_MAX];
+    char reply[512];
     uint32_t identifier = 0;
     uint8_t data[8];
     int data_len = 0;
@@ -183,6 +184,10 @@ static err_t gc_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
         }
         i = rr_reply_gridconnect(identifier, data, data_len, RR_ALIAS_A505,
                                  RR_NODE_ID_U64, reply, (int)sizeof reply);
+        if (i <= 0) {
+            i = rr_service_frame(identifier, data, data_len, RR_ALIAS_A505,
+                                 RR_NODE_ID_U64, reply, (int)sizeof reply);
+        }
         if (i > 0) {
             tcp_write(pcb, reply, (u16_t)i, TCP_WRITE_FLAG_COPY);
             tcp_output(pcb);
