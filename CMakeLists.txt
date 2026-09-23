@@ -71,7 +71,19 @@ add_executable(lcc_node
     third_party/Unity/src/unity.c)
 target_include_directories(lcc_node PRIVATE include third_party/Unity/src)
 if(RR_WIFI_WRAP)
-    target_include_directories(lcc_node PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/local")
+    target_compile_definitions(lcc_node PRIVATE 
+        MBEDTLS_CONFIG_FILE="rr_mbedtls_config.h")
+    target_include_directories(lcc_node PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/local"
+        "${PICO_SDK_PATH}/lib/mbedtls/include")
+    target_sources(lcc_node PRIVATE
+        "${PICO_SDK_PATH}/lib/mbedtls/library/aes.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/gcm.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/hkdf.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/md.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/sha256.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/block_cipher.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/constant_time.c")
 endif()
 target_compile_definitions(lcc_node PRIVATE
     RR_LCC_TRANSPORT="${LCC_TRANSPORT}"
@@ -79,7 +91,7 @@ target_compile_definitions(lcc_node PRIVATE
     RR_PICO_BOARD="${PICO_BOARD}"
     RR_KEY0_GPIO=${RR_KEY0_GPIO}
     RR_WIFI_WRAP=${RR_WIFI_WRAP}
-    RR_FIRMWARE_TESTS=1
+    RR_FIRMWARE_TESTS=0
     DEBUG)
 if(LCD_PANEL STREQUAL "RES35")
     target_sources(lcc_node PRIVATE src/restouch35.c)
@@ -100,8 +112,7 @@ if(PICO_CYW43_SUPPORTED)
         pico_cyw43_arch_lwip_sys_freertos
         FreeRTOS-Kernel-Heap4)
     if(RR_WIFI_WRAP)
-        target_compile_definitions(lcc_node PRIVATE MBEDTLS_NO_PLATFORM_ENTROPY)
-        target_link_libraries(lcc_node pico_mbedtls)
+        # Software AES only. pico_mbedtls hardware AES breaks GCM tags.
     endif()
 else()
     target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=0)

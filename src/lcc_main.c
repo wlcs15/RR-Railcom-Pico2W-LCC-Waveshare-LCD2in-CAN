@@ -48,9 +48,33 @@ void rr_uart_raw_banner(void);
 #include "wifi_psk_wrap.inc"
 #include "hub_host.h"
 #include "mbedtls/gcm.h"
+#include "mbedtls/aes.h"
 #include "mbedtls/hkdf.h"
 #include "mbedtls/md.h"
 #endif
+
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+int64_t mbedtls_ms_time(void)
+{
+    return 0;
+}
+
+void mbedtls_platform_zeroize(void *buf, size_t len)
+{
+    volatile unsigned char *p = (volatile unsigned char *)buf;
+    while (len-- > 0) {
+        *p++ = 0;
+    }
+}
+
+void mbedtls_zeroize_and_free(void *buf, size_t len)
+{
+    mbedtls_platform_zeroize(buf, len);
+    free(buf);
+}
 
 static char g_login[9 * RR_GC_FRAME_MAX];
 static int g_login_len;
@@ -113,13 +137,19 @@ static int unwrap_psk(const uint8_t mac[6], char *psk, int psk_cap)
     uint8_t info[5 + 6];
     uint8_t key[32];
     uint8_t plain[64];
+    uint8_t hmac_in[12 + 64];
+    uint8_t expect[32];
+    uint8_t nonce_counter[16];
+    uint8_t stream_block[16];
     const uint8_t *blob = kWifiWrapBlob;
-    mbedtls_gcm_context gcm;
+    mbedtls_aes_context aes;
     int clen;
     uint64_t node = RR_NODE_ID_U64;
+    size_t nc_off = 0;
     int i;
 
-    if (blob[0] != 1 || psk_cap < 65) {
+    if (blob[0] != 2 || psk_cap < 65) {
+        printf("TARGET unwrap bad hdr %u cap %d\n", blob[0], psk_cap);
         return -1;
     }
     pico_get_unique_board_id(&id);
@@ -135,27 +165,54 @@ static int unwrap_psk(const uint8_t mac[6], char *psk, int psk_cap)
     info[3] = 0x01;
     info[4] = 0xA5;
     memcpy(info + 5, mac, 6);
+
+    printf("TARGET unwrap blob");
+    for (i = 0; i < 14; i++) {
+        printf(" %02X", blob[i]);
+    }
+    printf("\n");
+
     if (mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
                      (const unsigned char *)"owlthree-pico2w-wifi-wrap-v1", 28,
                      ikm, sizeof ikm, info, sizeof info, key, sizeof key) != 0) {
+        printf("TARGET unwrap hkdf fail\n");
         return -1;
     }
+    printf("TARGET unwrap key");
+    for (i = 0; i < 8; i++) {
+        printf(" %02X", key[i]);
+    }
+    printf("\n");
+
     clen = blob[1 + 12 + 16];
     if (clen <= 0 || clen > 64) {
+        printf("TARGET unwrap bad clen %d\n", clen);
         return -1;
     }
-    mbedtls_gcm_init(&gcm);
-    if (mbedtls_gcm_setkey(&gcm, MBEDTLS_CIPHER_ID_AES, key, 256) != 0) {
-        mbedtls_gcm_free(&gcm);
+
+    memcpy(hmac_in, blob + 1, 12);
+    memcpy(hmac_in + 12, blob + 1 + 12 + 16 + 1, (size_t)clen);
+    if (mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
+                        key, 32, hmac_in, 12 + (size_t)clen, expect) != 0 ||
+        memcmp(expect, blob + 1 + 12, 16) != 0) {
+        printf("TARGET unwrap hmac fail\n");
         return -1;
     }
-    if (mbedtls_gcm_auth_decrypt(&gcm, (size_t)clen, blob + 1, 12, NULL, 0,
-                                 blob + 1 + 12, 16, blob + 1 + 12 + 16 + 1,
-                                 plain) != 0) {
-        mbedtls_gcm_free(&gcm);
+
+    memset(nonce_counter, 0, sizeof nonce_counter);
+    memcpy(nonce_counter, blob + 1, 12);
+    mbedtls_aes_init(&aes);
+    if (mbedtls_aes_setkey_enc(&aes, key, 256) != 0 ||
+        mbedtls_aes_crypt_ctr(&aes, (size_t)clen, &nc_off, nonce_counter,
+                              stream_block, blob + 1 + 12 + 16 + 1,
+                              plain) != 0) {
+        printf("TARGET unwrap ctr fail\n");
+        mbedtls_aes_free(&aes);
         return -1;
     }
-    mbedtls_gcm_free(&gcm);
+    mbedtls_aes_free(&aes);
+    printf("TARGET unwrap ctr ok\n");
+
     memcpy(psk, plain, (size_t)clen);
     psk[clen] = '\0';
     memset(plain, 0, sizeof plain);
@@ -266,6 +323,8 @@ static void join_and_listen(const uint8_t mac[6])
     }
     g_wifi_icon = RR_WIFI_ICON_SEARCH;
     RR_DBG("TARGET wifi join start\n");
+    //printf("TARGET wifi ssid %s\n", kWifiWrapSsid);
+
     if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, psk,
                                            CYW43_AUTH_WPA2_AES_PSK, 15000) != 0) {
         printf("TARGET wifi join failed\n");
