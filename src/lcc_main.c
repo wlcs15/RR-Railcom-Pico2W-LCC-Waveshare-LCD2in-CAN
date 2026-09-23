@@ -249,6 +249,8 @@ static err_t gc_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     (void)err;
     if (p == NULL) {
         tcp_close(pcb);
+        g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_jmri_icon = RR_SVC_ICON_FAIL;
         return ERR_OK;
     }
     tcp_recved(pcb, p->tot_len);
@@ -475,6 +477,30 @@ static void debug_beat(int led_on)
 #endif
 }
 
+static TickType_t g_hub_next_try;
+
+static void hub_ensure(void)
+{
+#if RR_WIFI_WRAP
+    TickType_t now = xTaskGetTickCount();
+
+    if (!g_ip_text[0]) {
+        return;
+    }
+    if (g_lcc_icon == RR_SVC_ICON_OK) {
+        return;
+    }
+    if ((int32_t)(now - g_hub_next_try) < 0) {
+        return;
+    }
+    g_hub_next_try = now + pdMS_TO_TICKS(5000);
+    printf("TARGET hub retry\n");
+    cyw43_arch_lwip_begin();
+    dial_hub();
+    cyw43_arch_lwip_end();
+#endif
+}
+
 static TickType_t g_wifi_next_try;
 
 static void wifi_ensure(void)
@@ -530,7 +556,7 @@ static void app_task(void *unused)
         printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
         wifi_ensure();
-
+        hub_ensure();
         led_on = !led_on;
         blink_led(led_on);
 #ifdef DEBUG        
