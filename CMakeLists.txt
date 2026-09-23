@@ -92,6 +92,8 @@ target_compile_definitions(lcc_node PRIVATE
     RR_KEY0_GPIO=${RR_KEY0_GPIO}
     RR_WIFI_WRAP=${RR_WIFI_WRAP}
     RR_FIRMWARE_TESTS=0
+    UNITY_SUPPORT_64
+    UNITY_INCLUDE_64
     DEBUG)
 if(LCD_PANEL STREQUAL "RES35")
     target_sources(lcc_node PRIVATE src/restouch35.c)
