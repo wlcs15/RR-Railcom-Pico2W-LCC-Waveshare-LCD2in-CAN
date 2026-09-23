@@ -116,11 +116,13 @@ static void print_unique_id(void)
     int i;
 
     pico_get_unique_board_id(&id);
+#ifdef DEBUG
     printf("SPI flash unique ID: ");
     for (i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; i++) {
         printf("%02X", id.id[i]);
     }
     printf("\n");
+#endif
 }
 
 static void print_mac(const uint8_t mac[6])
@@ -166,24 +168,26 @@ static int unwrap_psk(const uint8_t mac[6], char *psk, int psk_cap)
     info[4] = 0xA5;
     memcpy(info + 5, mac, 6);
 
+#ifdef DEBUG
     printf("TARGET unwrap blob");
     for (i = 0; i < 14; i++) {
         printf(" %02X", blob[i]);
     }
     printf("\n");
-
+#endif
     if (mbedtls_hkdf(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
                      (const unsigned char *)"owlthree-pico2w-wifi-wrap-v1", 28,
                      ikm, sizeof ikm, info, sizeof info, key, sizeof key) != 0) {
         printf("TARGET unwrap hkdf fail\n");
         return -1;
     }
+#ifdef DEBUG
     printf("TARGET unwrap key");
     for (i = 0; i < 8; i++) {
         printf(" %02X", key[i]);
     }
     printf("\n");
-
+#endif
     clen = blob[1 + 12 + 16];
     if (clen <= 0 || clen > 64) {
         printf("TARGET unwrap bad clen %d\n", clen);
@@ -356,7 +360,9 @@ static void start_radio(void)
     uint8_t mac[6];
 
     print_unique_id();
+#ifdef DEBUG
     printf("TARGET radio start\n");
+#endif
     if (cyw43_arch_init() != 0) {
         printf("TARGET cyw43 init failed\n");
         while (1) {
@@ -385,8 +391,15 @@ static void start_radio(void)
 static int checks_ok(void)
 {
     print_identity();
+#ifdef DEBUG
     printf("TARGET rtos freertos\n");
+#endif
+#if RR_FIRMWARE_TESTS
     printf("TARGET unity %s\n", rr_run_all_tests() == 0 ? "ok" : "fail");
+#endif
+#ifdef DEBUG
+    printf("TARGET after tests tick %u\n", to_ms_since_boot(get_absolute_time()));
+#endif
     g_login_len = rr_login_gridconnect(RR_ALIAS_A505, RR_NODE_ID_U64,
                                        g_login, (int)sizeof g_login);
     if (rr_pin_conflict_count() != 0 || rr_pin_uses_wireless_gpio() != 0 || g_login_len < 0) {
@@ -399,9 +412,18 @@ static int checks_ok(void)
 static void start_board(void)
 {
 #if RR_PANEL_RES35
+    printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
+
     rr_restouch_init();
+    printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
+
     g_wifi_icon = RR_WIFI_ICON_SEARCH;
+
+    printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
+
     panel_show();
+    printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
+
 #endif
 #if RR_LED_CYW43
     start_radio();
@@ -451,11 +473,26 @@ static void app_task(void *unused)
     while (1) {
         static int led_on = 0;
 
+#ifdef DEBUG
+        printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
+#endif
         panel_show();
+#ifdef DEBUG
+        printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
+#endif
         led_on = !led_on;
         blink_led(led_on);
+#ifdef DEBUG        
+        printf("TARGET blink/panel %s:%d\n", __FILE__, __LINE__);
+#endif
         debug_beat(led_on);
+#ifdef DEBUG
+        printf("TARGET loop after beat %s:%d\n", __FILE__, __LINE__);
+#endif
         vTaskDelay(pdMS_TO_TICKS(500));
+#ifdef DEBUG
+        printf("TARGET loop after delay %s:%d\n", __FILE__, __LINE__);
+#endif
     }
 }
 
@@ -467,10 +504,13 @@ static void alive_task(void *unused)
     (void)unused;
     while (!g_led_ready) {
         beat++;
+#ifdef DEBUG
         printf("TARGET alive %lu led wait-radio tick %lu uart0 GP0\n",
                beat, (unsigned long)xTaskGetTickCount());
+#endif
         vTaskDelay(pdMS_TO_TICKS(500));
     }
+  vTaskDelete(NULL);
 }
 #endif
 
