@@ -79,6 +79,7 @@ void mbedtls_zeroize_and_free(void *buf, size_t len)
 static char g_login[9 * RR_GC_FRAME_MAX];
 static int g_login_len;
 static char g_ip_text[20];
+static char g_wifi_psk[65];
 static const char *g_lan_text = "unknown";
 static volatile int g_wifi_icon = RR_WIFI_ICON_OFF;
 static volatile int g_lcc_icon = RR_SVC_ICON_DIM;
@@ -316,29 +317,27 @@ static int dial_hub(void)
 #if RR_LED_CYW43 && RR_WIFI_WRAP
 static void join_and_listen(const uint8_t mac[6])
 {
-    char psk[65];
-    int pw = unwrap_psk(mac, psk, (int)sizeof psk);
+    int pw = unwrap_psk(mac, g_wifi_psk, (int)sizeof g_wifi_psk);
 
     if (pw < 0) {
         printf("TARGET wifi unwrap failed\n");
-        g_wifi_icon = RR_WIFI_ICON_FAIL;
-        g_lcc_icon = RR_SVC_ICON_FAIL;
+        //g_wifi_icon = RR_WIFI_ICON_FAIL;
+        //g_lcc_icon = RR_SVC_ICON_FAIL;
         return;
     }
-    g_wifi_icon = RR_WIFI_ICON_SEARCH;
+    //g_wifi_icon = RR_WIFI_ICON_SEARCH;
     RR_DBG("TARGET wifi join start\n");
     //printf("TARGET wifi ssid %s\n", kWifiWrapSsid);
 
-    if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, psk,
-                                           CYW43_AUTH_WPA2_AES_PSK, 15000) != 0) {
+    if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, g_wifi_psk,
+                                           CYW43_AUTH_WPA2_AES_PSK, 30000) != 0) {
         printf("TARGET wifi join failed\n");
-        g_lan_text = "wifi join failed";
-        g_wifi_icon = RR_WIFI_ICON_FAIL;
-        g_lcc_icon = RR_SVC_ICON_FAIL;
-        memset(psk, 0, sizeof psk);
+        //g_lan_text = "wifi join failed";
+        //g_wifi_icon = RR_WIFI_ICON_FAIL;
+        //g_lcc_icon = RR_SVC_ICON_FAIL;
         return;
     }
-    memset(psk, 0, sizeof psk);
+    
     {
         const ip4_addr_t *ip = netif_ip4_addr(netif_default);
         snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
@@ -460,6 +459,26 @@ static void debug_beat(int led_on)
 #endif
 }
 
+static void wifi_ensure(void)
+{
+#if RR_WIFI_WRAP
+    if (g_ip_text[0] || !g_wifi_psk[0]) {
+        return;
+    }
+    printf("TARGET wifi retry\n");
+    if (cyw43_arch_wifi_connect_timeout_ms(
+            kWifiWrapSsid, g_wifi_psk,
+            CYW43_AUTH_WPA2_AES_PSK, 30000) != 0) {
+        printf("TARGET wifi join failed\n");
+        return;
+    }
+    {
+        const ip4_addr_t *ip = netif_ip4_addr(netif_default);
+        snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
+        printf("TARGET ip %s\n", g_ip_text);
+    }
+#endif
+}
 static void app_task(void *unused)
 {
     (void)unused;
@@ -480,6 +499,8 @@ static void app_task(void *unused)
 #ifdef DEBUG
         printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
+        wifi_ensure();
+
         led_on = !led_on;
         blink_led(led_on);
 #ifdef DEBUG        
