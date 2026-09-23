@@ -315,6 +315,8 @@ static int dial_hub(void)
 #endif
 
 #if RR_LED_CYW43 && RR_WIFI_WRAP
+static char g_wifi_psk[65];          /* up with g_ip_text, not inside the function */
+
 static void join_and_listen(const uint8_t mac[6])
 {
     int pw = unwrap_psk(mac, g_wifi_psk, (int)sizeof g_wifi_psk);
@@ -332,6 +334,7 @@ static void join_and_listen(const uint8_t mac[6])
     if (cyw43_arch_wifi_connect_timeout_ms(kWifiWrapSsid, g_wifi_psk,
                                            CYW43_AUTH_WPA2_AES_PSK, 30000) != 0) {
         printf("TARGET wifi join failed\n");
+        g_ip_text[0] = '\0';
         //g_lan_text = "wifi join failed";
         //g_wifi_icon = RR_WIFI_ICON_FAIL;
         //g_lcc_icon = RR_SVC_ICON_FAIL;
@@ -341,11 +344,15 @@ static void join_and_listen(const uint8_t mac[6])
     {
         const ip4_addr_t *ip = netif_ip4_addr(netif_default);
         snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
+#ifdef HACK
         g_lan_text = (ip4_addr1(ip) == 192 && ip4_addr2(ip) == 168 && ip4_addr3(ip) == 1)
                          ? "192.168.1 same" : "other";
+#endif
         printf("TARGET ip %s\n", g_ip_text);
         printf("TARGET lan %s\n", g_lan_text);
+#ifdef HACK
         g_wifi_icon = RR_WIFI_ICON_OK;
+#endif
     }
     cyw43_arch_lwip_begin();
     dial_hub();
@@ -474,7 +481,20 @@ static void wifi_ensure(void)
     }
     g_wifi_next_try = now + pdMS_TO_TICKS(5000);
     printf("TARGET wifi retry\n");
-    /* connect 30000, then ip + dial_hub as above */
+    if (cyw43_arch_wifi_connect_timeout_ms(
+            kWifiWrapSsid, g_wifi_psk,
+            CYW43_AUTH_WPA2_AES_PSK, 30000) != 0) {
+        printf("TARGET wifi join failed\n");
+        return;
+    }
+    {
+        const ip4_addr_t *ip = netif_ip4_addr(netif_default);
+        snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
+        printf("TARGET ip %s\n", g_ip_text);
+    }
+    cyw43_arch_lwip_begin();
+    dial_hub();
+    cyw43_arch_lwip_end();
 #endif
 }
 
