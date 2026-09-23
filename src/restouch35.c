@@ -81,7 +81,6 @@ static void rr_window(int x, int y, int w, int h)
     rr_cmd(0x2C);
 }
 
-#ifndef HACK
 static void rr_fill_rect(int x, int y, int w, int h, uint16_t color)
 {
     uint8_t pair[2];
@@ -111,80 +110,7 @@ static void rr_fill_rect(int x, int y, int w, int h, uint16_t color)
     }
     gpio_put(RR_LCD_CS, 1);
 }
-#else
-static void rr_fill_rect(int x, int y, int w, int h, uint16_t color)
-{
-    uint8_t pix[3];
-    int n = w * h;
 
-    if (w <= 0 || h <= 0) {
-        return;
-    }
-    pix[0] = (uint8_t)((color >> 8) & 0xF8);
-    pix[1] = (uint8_t)((color >> 3) & 0xFC);
-    pix[2] = (uint8_t)((color << 3) & 0xF8);
-    rr_window(x, y, w, h);
-    gpio_put(RR_LCD_DC, 1);
-    gpio_put(RR_LCD_CS, 0);
-    {
-        uint8_t chunk[240];
-        int i;
-
-        for (i = 0; i < 80; i++) {
-            chunk[i * 3] = pix[0];
-            chunk[i * 3 + 1] = pix[1];
-            chunk[i * 3 + 2] = pix[2];
-        }
-        while (n > 0) {
-            int pixels = n > 80 ? 80 : n;
-            spi_write_blocking(spi1, chunk, (size_t)(pixels * 3));
-            n -= pixels;
-        }
-    }
-    gpio_put(RR_LCD_CS, 1);
-}
-#endif
-
-#ifdef HACK2
-static void rr_panel_on(void)
-{
-    static const uint8_t c2[] = {0x33};
-    static const uint8_t c5[] = {0x00, 0x1e, 0x80};
-    static const uint8_t b1[] = {0xB0};
-    static const uint8_t mad[] = {0x28};
-    static const uint8_t e0[] = {
-        0x00, 0x13, 0x18, 0x04, 0x0F, 0x06, 0x3a, 0x56,
-        0x4d, 0x03, 0x0a, 0x06, 0x30, 0x3e, 0x0f};
-    static const uint8_t e1[] = {
-        0x00, 0x13, 0x18, 0x01, 0x11, 0x06, 0x38, 0x34,
-        0x4d, 0x06, 0x0d, 0x0b, 0x31, 0x37, 0x0f};
-#ifdef HACK
-    static const uint8_t pix[] = {0x55};
-#else
-   static const uint8_t pix[] = {0x66}; // Was 0x55 in the original source design
-#endif
-    static const uint8_t b6[] = {0x62};
-
-    gpio_put(RR_LCD_RST, 1);
-    sleep_ms(50);
-    gpio_put(RR_LCD_RST, 0);
-    sleep_ms(50);
-    gpio_put(RR_LCD_RST, 1);
-    sleep_ms(150);
-    rr_cmd(0x21);
-    rr_cmd_bytes(0xC2, c2, 1);
-    rr_cmd_bytes(0xC5, c5, 3);
-    rr_cmd_bytes(0xB1, b1, 1);
-    rr_cmd_bytes(0x36, mad, 1);
-    rr_cmd_bytes(0xE0, e0, 15);
-    rr_cmd_bytes(0xE1, e1, 15);
-    rr_cmd_bytes(0x3A, pix, 1);
-    rr_cmd_bytes(0xB6, b6, 1);
-    rr_cmd(0x11);
-    sleep_ms(120);
-    rr_cmd(0x29);
-}
-#else
 static void rr_panel_on(void)
 {
     static const uint8_t c2[] = {0x33};
@@ -218,7 +144,6 @@ static void rr_panel_on(void)
     sleep_ms(120);
     rr_cmd(0x29);
 }
-#endif
 
 /* 5-wide glyphs, bit 4 is the left column. Only the status labels. */
 static const uint8_t k_glyph_c[7] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
@@ -361,14 +286,17 @@ void rr_restouch_init(void)
     
     printf("TARGET lcd rst %d bl %d spi1\n", RR_LCD_RST, RR_LCD_BL);
     rr_panel_on();
+#ifdef DEBUG
     printf("TARGET lcd panel_on done\n");
-
+#endif
     rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0x0010);
     rr_fill_rect(0, 40, RR_LCD_W, 36, 0xFFE0);
     rr_draw_text(8, 50, "A505", 0x0000, 0xFFE0);
 
-    rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0xF800);
-    printf("TARGET lcd fill done\n");
+    //rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0xF800);
+#ifdef DEBUG
+    printf("TARGET lcd fill done 2\n");
+#endif
 }
 
 void rr_restouch_status(int wifi, int lcc, int jmri)

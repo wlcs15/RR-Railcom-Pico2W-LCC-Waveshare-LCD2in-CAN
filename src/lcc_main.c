@@ -418,18 +418,22 @@ static int checks_ok(void)
 static void start_board(void)
 {
 #if RR_PANEL_RES35
+#ifdef DEBUG
     printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
-
+#endif
     rr_restouch_init();
+#ifdef DEBUG
     printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
-
+#endif
     g_wifi_icon = RR_WIFI_ICON_SEARCH;
 
+#ifdef DEBUG
     printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
-
+#endif
     panel_show();
+#ifdef DEBUG
     printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
-
+#endif
 #endif
 #if RR_LED_CYW43
     start_radio();
