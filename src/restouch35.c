@@ -288,10 +288,10 @@ void rr_restouch_init(void)
     rr_panel_on();
 #ifdef DEBUG
     printf("TARGET lcd panel_on done\n");
-#endif
     rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0x0010);
     rr_fill_rect(0, 40, RR_LCD_W, 36, 0xFFE0);
     rr_draw_text(8, 50, "A505", 0x0000, 0xFFE0);
+#endif
 
     //rr_fill_rect(0, 0, RR_LCD_W, RR_LCD_H, 0xF800);
 #ifdef DEBUG

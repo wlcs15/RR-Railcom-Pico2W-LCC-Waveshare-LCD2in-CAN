@@ -83,12 +83,13 @@ static char g_wifi_psk[65];
 static const char *g_lan_text = "unknown";
 static volatile int g_wifi_icon = RR_WIFI_ICON_OFF;
 static volatile int g_lcc_icon = RR_SVC_ICON_DIM;
+static volatile int g_jmri_icon = RR_SVC_ICON_DIM;
 
 #if RR_PANEL_RES35
 static void panel_show(void)
 {
     /* JMRI web port 12080 is not probed. That icon stays dim. Touch is not read. */
-    rr_restouch_status(g_wifi_icon, g_lcc_icon, RR_SVC_ICON_DIM);
+    rr_restouch_status(g_wifi_icon, g_lcc_icon, g_jmri_icon);
 }
 #else
 static void panel_show(void) {}
@@ -278,6 +279,7 @@ static err_t gc_connected(void *arg, struct tcp_pcb *pcb, err_t err)
     if (err != ERR_OK || pcb == NULL) {
         printf("TARGET hub connect failed\n");
         g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_jmri_icon = RR_SVC_ICON_FAIL;
         return ERR_ABRT;
     }
     tcp_recv(pcb, gc_recv);
@@ -286,6 +288,7 @@ static err_t gc_connected(void *arg, struct tcp_pcb *pcb, err_t err)
     tcp_output(pcb);
     printf("TARGET hub connected\n");
     g_lcc_icon = RR_SVC_ICON_OK;
+    g_jmri_icon = RR_SVC_ICON_OK;
     return ERR_OK;
 }
 
@@ -301,12 +304,14 @@ static int dial_hub(void)
     if (pcb == NULL || !ipaddr_aton(RR_HUB_HOST, &addr)) {
         printf("TARGET hub missing\n");
         g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_jmri_icon = RR_SVC_ICON_FAIL;
         return -1;
     }
     printf("TARGET hub dial %s %d\n", RR_HUB_HOST, RR_GC_PORT);
     if (tcp_connect(pcb, &addr, RR_GC_PORT, gc_connected) != ERR_OK) {
         printf("TARGET hub connect failed\n");
         g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_jmri_icon = RR_SVC_ICON_FAIL;
         tcp_close(pcb);
         return -1;
     }
@@ -323,8 +328,9 @@ static void join_and_listen(const uint8_t mac[6])
 
     if (pw < 0) {
         printf("TARGET wifi unwrap failed\n");
-        //g_wifi_icon = RR_WIFI_ICON_FAIL;
-        //g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_wifi_icon = RR_WIFI_ICON_FAIL;
+        g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_jmri_icon = RR_SVC_ICON_FAIL;
         return;
     }
     //g_wifi_icon = RR_WIFI_ICON_SEARCH;
@@ -336,8 +342,9 @@ static void join_and_listen(const uint8_t mac[6])
         printf("TARGET wifi join failed\n");
         g_ip_text[0] = '\0';
         //g_lan_text = "wifi join failed";
-        //g_wifi_icon = RR_WIFI_ICON_FAIL;
-        //g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_wifi_icon = RR_WIFI_ICON_FAIL;
+        g_lcc_icon = RR_SVC_ICON_FAIL;
+        g_jmri_icon = RR_SVC_ICON_FAIL;
         return;
     }
     
@@ -350,9 +357,7 @@ static void join_and_listen(const uint8_t mac[6])
 #endif
         printf("TARGET ip %s\n", g_ip_text);
         printf("TARGET lan %s\n", g_lan_text);
-#ifdef HACK
         g_wifi_icon = RR_WIFI_ICON_OK;
-#endif
     }
     cyw43_arch_lwip_begin();
     dial_hub();
@@ -489,31 +494,7 @@ static void wifi_ensure(void)
             kWifiWrapSsid, g_wifi_psk,
             CYW43_AUTH_WPA2_AES_PSK, 30000) != 0) {
         printf("TARGET wifi join failed\n");
-        return;
-    }
-    {
-        const ip4_addr_t *ip = netif_ip4_addr(netif_default);
-        snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
-        printf("TARGET ip %s\n", g_ip_text);
-    }
-    cyw43_arch_lwip_begin();
-    dial_hub();
-    cyw43_arch_lwip_end();
-#endif
-}
-
-#if HACK
-static void wifi_ensure(void)
-{
-#if RR_WIFI_WRAP
-    if (g_ip_text[0] || !g_wifi_psk[0]) {
-        return;
-    }
-    printf("TARGET wifi retry\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(
-            kWifiWrapSsid, g_wifi_psk,
-            CYW43_AUTH_WPA2_AES_PSK, 30000) != 0) {
-        printf("TARGET wifi join failed\n");
+        g_wifi_icon = RR_WIFI_ICON_FAIL;
         return;
     }
     {
@@ -527,7 +508,7 @@ static void wifi_ensure(void)
     cyw43_arch_lwip_end();
 #endif
 }
-#endif
+
 static void app_task(void *unused)
 {
     (void)unused;
