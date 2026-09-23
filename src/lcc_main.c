@@ -459,6 +459,26 @@ static void debug_beat(int led_on)
 #endif
 }
 
+static TickType_t g_wifi_next_try;
+
+static void wifi_ensure(void)
+{
+#if RR_WIFI_WRAP
+    TickType_t now = xTaskGetTickCount();
+
+    if (g_ip_text[0] || !g_wifi_psk[0]) {
+        return;
+    }
+    if ((int32_t)(now - g_wifi_next_try) < 0) {
+        return;
+    }
+    g_wifi_next_try = now + pdMS_TO_TICKS(5000);
+    printf("TARGET wifi retry\n");
+    /* connect 30000, then ip + dial_hub as above */
+#endif
+}
+
+#if HACK
 static void wifi_ensure(void)
 {
 #if RR_WIFI_WRAP
@@ -476,9 +496,14 @@ static void wifi_ensure(void)
         const ip4_addr_t *ip = netif_ip4_addr(netif_default);
         snprintf(g_ip_text, sizeof g_ip_text, "%s", ip4addr_ntoa(ip));
         printf("TARGET ip %s\n", g_ip_text);
+        g_wifi_icon = RR_WIFI_ICON_OK;
     }
+    cyw43_arch_lwip_begin();
+    dial_hub();
+    cyw43_arch_lwip_end();
 #endif
 }
+#endif
 static void app_task(void *unused)
 {
     (void)unused;
