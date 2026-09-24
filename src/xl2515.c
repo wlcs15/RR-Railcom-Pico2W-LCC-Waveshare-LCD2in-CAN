@@ -104,9 +104,12 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     gpio_set_dir(XL2515_INT_PIN, GPIO_IN);
     gpio_pull_up(XL2515_INT_PIN);
 
-#ifdef HACK
+    xl2515_reset();
+    sleep_ms(100);
+
+//#ifdef HACK
     gpio_set_irq_enabled_with_callback(XL2515_INT_PIN, GPIO_IRQ_EDGE_FALL, true, gpio_callback); // Commented out for first bringup on hardware, was | GPIO_IRQ_EDGE_RISE
-#endif
+//#endif
 
     xl2515_reset();
     sleep_ms(100);
@@ -149,7 +152,7 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     uint8_t dummy = xl2515_read_reg_byte(CANSTAT);
     if ((dummy & 0xe0) != OPMODE_NORMAL)
     {
-        printf("OPMODE_NORMAL\r\n");
+        printf("!OPMODE_NORMAL\r\n");
         xl2515_write_reg_byte(CANCTRL, REQOP_NORMAL | CLKOUT_ENABLED); // #set normal mode
     }
 }
