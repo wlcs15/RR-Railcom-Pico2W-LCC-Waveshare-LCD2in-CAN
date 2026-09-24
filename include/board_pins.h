@@ -39,6 +39,23 @@
 #define RR_WIFI_CS_GPIO 25
 #define RR_WIFI_CLK_GPIO 29
 
+// Add values for Waveshare RP2350-CAN board
+#ifndef RR_CAN_SPI
+#define RR_CAN_SPI spi1
+#endif
+#ifndef RR_CAN_CS_GPIO
+#define RR_CAN_CS_GPIO 9
+#endif
+#ifndef RR_CAN_SCK_GPIO
+#define RR_CAN_SCK_GPIO 10
+#endif
+#ifndef RR_CAN_MOSI_GPIO
+#define RR_CAN_MOSI_GPIO 11
+#endif
+#ifndef RR_CAN_MISO_GPIO
+#define RR_CAN_MISO_GPIO 12
+#endif
+
 _Static_assert(RR_LCD_SCK_GPIO != RR_CAN_SCK_GPIO, "LCD and CAN clocks must differ");
 _Static_assert(RR_LCD_CS_GPIO != RR_CAN_CS_GPIO, "LCD and CAN chip-selects must differ");
 _Static_assert(RR_LCD_MOSI_GPIO != RR_CAN_MOSI_GPIO, "LCD and CAN MOSI must differ");

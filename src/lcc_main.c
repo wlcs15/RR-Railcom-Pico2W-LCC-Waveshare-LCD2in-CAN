@@ -62,6 +62,10 @@ void rr_uart_raw_banner(void);
 #include "tusb.h"
 #endif
 
+#if !RR_LED_CYW43
+#include "xl2515.h"
+#endif
+
 int64_t mbedtls_ms_time(void)
 {
     return 0;
@@ -447,6 +451,13 @@ static void start_board(void)
     printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
 #endif
+
+#if !RR_LED_CYW43
+    /* demo init name from step 3 */
+    xl2515_init(KBPS125);
+    printf("TARGET can init\n");
+#endif
+
 #if RR_LED_CYW43
     start_radio();
 #else

@@ -102,6 +102,11 @@ else()
     target_compile_definitions(lcc_node PRIVATE RR_PANEL_RES35=0)
 endif()
 
+if(LCC_TRANSPORT STREQUAL "CAN" OR LCC_TRANSPORT STREQUAL "BOTH")
+    target_sources(lcc_node PRIVATE src/xl2515.c)
+    target_link_libraries(lcc_node hardware_spi)
+endif()
+
 pico_enable_stdio_usb(lcc_node 1)
 pico_enable_stdio_uart(lcc_node 0)
 pico_add_extra_outputs(lcc_node)
@@ -119,3 +124,4 @@ else()
     target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=0)
     target_link_libraries(lcc_node pico_stdlib pico_async_context_freertos FreeRTOS-Kernel-Heap4)
 endif()
+
