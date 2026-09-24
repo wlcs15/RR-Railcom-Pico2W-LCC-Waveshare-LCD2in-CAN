@@ -473,9 +473,8 @@ static void start_board(void)
 #if !RR_LED_CYW43
     /* demo init name from step 3 */
     xl2515_init(KBPS125);
-    can_irq_attach();
+    xl2515_write_reg_byte(CANCTRL, REQOP_LOOPBACK | CLKOUT_ENABLED);
     //CANINTE = RX0IE | RX1IE (0x03);
-
 
     printf("TARGET can init\n");
 #endif
@@ -608,6 +607,9 @@ static void app_task(void *unused)
     fflush(stdout);
 #endif
     start_board();
+
+    printf("TARGET can irq gpio %d\n", 8);
+
     if (!checks_ok()) {
         while (1) {
             tight_loop_contents();
@@ -629,6 +631,11 @@ static void app_task(void *unused)
 #endif
         led_on = !led_on;
         blink_led(led_on);
+
+#if !RR_LED_CYW43
+        printf("TARGET can int %d\n", gpio_get(8));
+#endif
+
 #ifdef DEBUG        
         printf("TARGET blink/panel %s:%d\n", __FILE__, __LINE__);
 #endif
@@ -680,6 +687,7 @@ static void usb_task(void *unused)
 }
 #endif
 
+#ifdef HACK
 static void can_task(void *unused)
 {
     uint32_t id;
@@ -698,6 +706,38 @@ static void can_task(void *unused)
                 printf("TARGET can tx %08lx %u\n",
                        (unsigned long)id, (unsigned)len);
             }
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+}
+#endif
+
+static void can_task(void *unused)
+{
+    uint32_t id;
+    uint8_t data[8];
+    uint8_t len;
+
+    (void)unused;
+
+    // For internal loopback testing
+    uint8_t payload[8] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+    xl2515_send(0x123, payload, 8);
+
+    for (;;) {
+        while (xl2515_recv(&id, data, &len)) {
+            unsigned i;
+
+            printf("TARGET can rx %08lx %u",
+                   (unsigned long)id, (unsigned)len);
+            for (i = 0; i < len && i < 8; i++) {
+                printf(" %02x", data[i]);
+            }
+            printf("\n");
+
+            xl2515_send(id, data, len);
+            printf("TARGET can tx %08lx %u\n",
+                   (unsigned long)id, (unsigned)len);
         }
         vTaskDelay(pdMS_TO_TICKS(2));
     }

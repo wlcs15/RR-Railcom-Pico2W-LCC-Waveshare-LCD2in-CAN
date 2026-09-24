@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 
+void xl2515_write_reg_byte(uint8_t reg, uint8_t byte);
+
+
 // ## Configuration Registers */
 #define CANSTAT       0x0E
 #define CANCTRL       0x0F

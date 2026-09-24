@@ -11,6 +11,9 @@
 
 uint32_t filter_id = 0x123;
 bool g_xl2515_recv_flag = false;
+
+//void xl2515_write_reg_byte(uint8_t reg, uint8_t byte);
+
 static void xl2515_write_reg(uint8_t reg, uint8_t *data, uint8_t len)
 {
     uint8_t buf[len + 2];
@@ -32,8 +35,10 @@ static void xl2515_read_reg(uint8_t reg, uint8_t *data, uint8_t len)
     spi_read_blocking(XL2515_SPI_PORT, 0, data, len);
     gpio_put(XL2515_CS_PIN, 1);
 }
-
-static void xl2515_write_reg_byte(uint8_t reg, uint8_t byte)
+#ifdef HACK
+static 
+#endif
+void xl2515_write_reg_byte(uint8_t reg, uint8_t byte)
 {
     uint8_t cmd = CAN_WRITE;
     gpio_put(XL2515_CS_PIN, 0);
@@ -99,10 +104,7 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     gpio_set_dir(XL2515_INT_PIN, GPIO_IN);
     gpio_pull_up(XL2515_INT_PIN);
 
-#ifdef HACK
     gpio_set_irq_enabled_with_callback(XL2515_INT_PIN, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true, gpio_callback); // Commented out for first bringup on hardware
-#endif
-
 
     xl2515_reset();
     sleep_ms(100);
@@ -129,7 +131,7 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     // #Set RX
     xl2515_write_reg_byte(RXB0SIDH, 0x00);
     xl2515_write_reg_byte(RXB0SIDL, 0x60);
-    xl2515_write_reg_byte(RXB0CTRL, 0x00); // To receive all IDs, change this to 0x60
+    xl2515_write_reg_byte(RXB0CTRL, 0x60); // To receive all IDs, change this to 0x60, was 0x00 for first bring up before enable of interrupts
     xl2515_write_reg_byte(RXB0DLC, DLC_8);
 
     xl2515_write_reg_byte(RXF0SIDH, (filter_id >> 3) & 0XFF);

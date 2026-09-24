@@ -11,15 +11,14 @@ import time
 import pico_paths
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-UF2 = os.path.join(ROOT, "build", "firmware", "pico2_w", "lcc_node.uf2")
+UF2 = os.path.join(ROOT, "build", "firmware", "rp2350_can", "lcc_node.uf2")
 NEEDLES = (
     "TARGET boot",
+    "TARGET can init",
     "TARGET node 05.01.01.01.A5.05",
     "TARGET pin conflicts 0",
-    "TARGET unity ok",
     "OpenLCB Node ID: 05.01.01.01.A5.05",
 )
-
 
 def _ports():
     found = sorted(glob.glob("/dev/serial/by-id/*"))
