@@ -104,7 +104,9 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     gpio_set_dir(XL2515_INT_PIN, GPIO_IN);
     gpio_pull_up(XL2515_INT_PIN);
 
-    gpio_set_irq_enabled_with_callback(XL2515_INT_PIN, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true, gpio_callback); // Commented out for first bringup on hardware
+#ifdef HACK
+    gpio_set_irq_enabled_with_callback(XL2515_INT_PIN, GPIO_IRQ_EDGE_FALL, true, gpio_callback); // Commented out for first bringup on hardware, was | GPIO_IRQ_EDGE_RISE
+#endif
 
     xl2515_reset();
     sleep_ms(100);
@@ -175,6 +177,7 @@ void xl2515_send(uint32_t can_id, uint8_t *data, uint8_t len)
     xl2515_write_reg_byte(TXB0CTRL, 0x08);
 }
 
+#ifdef HACK
 bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len)
 {
     if (g_xl2515_recv_flag == false)
@@ -208,3 +211,25 @@ bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len)
     xl2515_write_reg_byte(RXB0SIDL, 0x60);
     return true;
 }
+#endif
+
+bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len)
+{
+    uint8_t i;
+
+    if ((xl2515_read_reg_byte(CANINTF) & 0x01) == 0) {
+        return false;
+    }
+    *can_id = ((uint32_t)xl2515_read_reg_byte(RXB0SIDH) << 3) |
+              (xl2515_read_reg_byte(RXB0SIDL) >> 5);
+    *len = xl2515_read_reg_byte(RXB0DLC) & 0x0F;
+    if (*len > 8) {
+        *len = 8;
+    }
+    for (i = 0; i < *len; i++) {
+        data[i] = xl2515_read_reg_byte(RXB0D0 + i);
+    }
+    xl2515_write_reg_byte(CANINTF, 0);
+    return true;
+}
+

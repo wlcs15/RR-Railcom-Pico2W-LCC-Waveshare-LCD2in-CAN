@@ -449,6 +449,7 @@ static void can_irq_attach(void)
         RR_CAN_INT_GPIO, GPIO_IRQ_EDGE_FALL, true, can_int_isr);
 }
 
+static volatile int g_can_ready;
 static void start_board(void)
 {
 #if RR_PANEL_RES35
@@ -471,12 +472,16 @@ static void start_board(void)
 #endif
 
 #if !RR_LED_CYW43
+    uint8_t payload[8] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+
     /* demo init name from step 3 */
     xl2515_init(KBPS125);
     xl2515_write_reg_byte(CANCTRL, REQOP_LOOPBACK | CLKOUT_ENABLED);
     //CANINTE = RX0IE | RX1IE (0x03);
 
     printf("TARGET can init\n");
+    xl2515_send(0x123, payload, 8); //CLS: Note just for loopback test
+    g_can_ready = 1;
 #endif
 
 #if RR_LED_CYW43
@@ -719,6 +724,31 @@ static void can_task(void *unused)
     uint8_t len;
 
     (void)unused;
+    while (!g_can_ready) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    for (;;) {
+        while (xl2515_recv(&id, data, &len)) {
+            unsigned i;
+            printf("TARGET can rx %08lx %u",
+                   (unsigned long)id, (unsigned)len);
+            for (i = 0; i < len; i++) {
+                printf(" %02x", data[i]);
+            }
+            printf("\n");
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+}
+
+#ifdef HACK2
+static void can_task(void *unused)
+{
+    uint32_t id;
+    uint8_t data[8];
+    uint8_t len;
+
+    (void)unused;
 
     // For internal loopback testing
     uint8_t payload[8] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
@@ -742,7 +772,7 @@ static void can_task(void *unused)
         vTaskDelay(pdMS_TO_TICKS(2));
     }
 }
-
+#endif
 
 int main(void)
 {
