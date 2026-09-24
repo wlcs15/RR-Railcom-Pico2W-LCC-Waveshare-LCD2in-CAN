@@ -430,6 +430,24 @@ static int checks_ok(void)
     }
     return 1;
 }
+static volatile uint32_t g_can_irq;
+
+static void can_int_isr(uint gpio, uint32_t events)
+{
+    (void)events;
+    if (gpio == RR_CAN_INT_GPIO) {
+        g_can_irq++;
+    }
+}
+
+static void can_irq_attach(void)
+{
+    gpio_init(RR_CAN_INT_GPIO);
+    gpio_set_dir(RR_CAN_INT_GPIO, GPIO_IN);
+    gpio_pull_up(RR_CAN_INT_GPIO);
+    gpio_set_irq_enabled_with_callback(
+        RR_CAN_INT_GPIO, GPIO_IRQ_EDGE_FALL, true, can_int_isr);
+}
 
 static void start_board(void)
 {
@@ -455,6 +473,10 @@ static void start_board(void)
 #if !RR_LED_CYW43
     /* demo init name from step 3 */
     xl2515_init(KBPS125);
+    can_irq_attach();
+    //CANINTE = RX0IE | RX1IE (0x03);
+
+
     printf("TARGET can init\n");
 #endif
 
@@ -658,6 +680,30 @@ static void usb_task(void *unused)
 }
 #endif
 
+static void can_task(void *unused)
+{
+    uint32_t id;
+    uint8_t data[8];
+    uint8_t len;
+    uint32_t last_irq = 0;
+
+    (void)unused;
+    for (;;) {
+        if (g_can_irq != last_irq || gpio_get(RR_CAN_INT_GPIO) == 0) {
+            last_irq = g_can_irq;
+            while (xl2515_recv(&id, data, &len)) {
+                printf("TARGET can rx %08lx %u\n",
+                       (unsigned long)id, (unsigned)len);
+                xl2515_send(id, data, len);   /* echo */
+                printf("TARGET can tx %08lx %u\n",
+                       (unsigned long)id, (unsigned)len);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+}
+
+
 int main(void)
 {
     rr_uart_raw_banner();
@@ -669,18 +715,6 @@ int main(void)
     /* USB wait + TARGET boot ... */
 #if RR_LED_CYW43
     rr_uart_ring_init(); 
-#endif
-
-#ifdef HACK
-    {
-        unsigned i;
-        for (i = 0; i < 40; i++) {
-            if (stdio_usb_connected()) {
-                break;
-            }
-            sleep_ms(100);
-        }
-    }
 #endif
 
     printf("TARGET boot\n");
@@ -698,13 +732,16 @@ int main(void)
     }
 #endif
     if (xTaskCreate(app_task, "lcc", 8192, 0, 1, 0) != pdPASS) {
-        printf("TARGET task create failed\n");
+        printf("TARGET lcc task create failed\n");
     }
 
 #if !RR_LED_CYW43
     xTaskCreate(usb_task, "usb", 512, 0, 2, 0);
 #endif
 
+    if (xTaskCreate(can_task, "can", 2048, 0, 2, 0) != pdPASS) {
+        printf("TARGET can task create failed\n");
+    } 
     vTaskStartScheduler();
     while (1) {
         tight_loop_contents();

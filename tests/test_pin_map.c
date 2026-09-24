@@ -12,11 +12,11 @@ void tearDown(void) {}
 
 static void test_assigned_count(void)
 {
-    TEST_ASSERT_EQUAL_INT(17, rr_pin_assigned_count());
-    TEST_ASSERT_EQUAL_INT(RR_LCD_DC_GPIO, rr_pin_at(0));
-    TEST_ASSERT_EQUAL_INT(RR_CAN_INT2_GPIO, rr_pin_at(16));
+    TEST_ASSERT_EQUAL_INT(5, rr_pin_assigned_count());
+    TEST_ASSERT_EQUAL_INT(RR_CAN_MISO_GPIO, rr_pin_at(0));
+    TEST_ASSERT_EQUAL_INT(RR_CAN_INT_GPIO, rr_pin_at(4));
     TEST_ASSERT_EQUAL_INT(-1, rr_pin_at(-1));
-    TEST_ASSERT_EQUAL_INT(-1, rr_pin_at(17));
+    TEST_ASSERT_EQUAL_INT(-1, rr_pin_at(5));
 }
 
 static void test_no_pin_conflicts(void)
@@ -24,14 +24,18 @@ static void test_no_pin_conflicts(void)
     TEST_ASSERT_EQUAL_INT(0, rr_pin_conflict_count());
 }
 
-static void test_lcd_and_can_use_different_spi_pins(void)
+static void test_can_spi_pins(void)
 {
-    TEST_ASSERT_EQUAL_INT(10, RR_LCD_SCK_GPIO);
-    TEST_ASSERT_EQUAL_INT(6, RR_CAN_SCK_GPIO);
-    TEST_ASSERT_EQUAL_INT(11, RR_LCD_MOSI_GPIO);
-    TEST_ASSERT_EQUAL_INT(7, RR_CAN_MOSI_GPIO);
-    TEST_ASSERT_EQUAL_INT(4, RR_CAN_MISO_GPIO);
-    TEST_ASSERT_EQUAL_INT(21, RR_CAN_INT_GPIO);
+    TEST_ASSERT_EQUAL_INT(5, rr_pin_assigned_count());
+    TEST_ASSERT_EQUAL_INT(RR_CAN_MISO_GPIO, rr_pin_at(0));
+    TEST_ASSERT_EQUAL_INT(RR_CAN_INT_GPIO, rr_pin_at(4));
+    TEST_ASSERT_EQUAL_INT(-1, rr_pin_at(5));
+
+    TEST_ASSERT_EQUAL_INT(10, RR_CAN_SCK_GPIO);
+    TEST_ASSERT_EQUAL_INT(11, RR_CAN_MOSI_GPIO);
+    TEST_ASSERT_EQUAL_INT(12, RR_CAN_MISO_GPIO);
+    TEST_ASSERT_EQUAL_INT(9,  RR_CAN_CS_GPIO);
+    TEST_ASSERT_EQUAL_INT(8,  RR_CAN_INT_GPIO);
 }
 
 static void test_does_not_use_wireless_gpios(void)
@@ -73,7 +77,7 @@ int rr_run_all_tests(void)
     UNITY_BEGIN();
     RUN_TEST(test_assigned_count);
     RUN_TEST(test_no_pin_conflicts);
-    RUN_TEST(test_lcd_and_can_use_different_spi_pins);
+    RUN_TEST(test_can_spi_pins);
     RUN_TEST(test_does_not_use_wireless_gpios);
     RUN_TEST(test_conflict_counter_sees_duplicates);
     RUN_TEST(test_key0_default_and_node_id);

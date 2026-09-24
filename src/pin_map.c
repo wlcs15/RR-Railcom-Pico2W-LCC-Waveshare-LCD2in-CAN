@@ -5,11 +5,8 @@
 #include "board_pins.h"
 
 static const int k_assigned[] = {
-    RR_LCD_DC_GPIO,    RR_LCD_CS_GPIO,   RR_LCD_SCK_GPIO,  RR_LCD_MOSI_GPIO,
-    RR_LCD_RST_GPIO,   RR_LCD_BL_GPIO,   RR_KEY2_GPIO,     RR_KEY3_GPIO,
-    RR_KEY0_GPIO,      RR_KEY1_GPIO,     RR_CAN_MISO_GPIO, RR_CAN_CS_GPIO,
-    RR_CAN_SCK_GPIO,   RR_CAN_MOSI_GPIO, RR_CAN_INT_GPIO,  RR_CAN_CS1_GPIO,
-    RR_CAN_INT2_GPIO,
+   RR_CAN_MISO_GPIO, RR_CAN_CS_GPIO, RR_CAN_SCK_GPIO,
+    RR_CAN_MOSI_GPIO, RR_CAN_INT_GPIO,
 };
 
 static int wireless_gpio(int gpio)
