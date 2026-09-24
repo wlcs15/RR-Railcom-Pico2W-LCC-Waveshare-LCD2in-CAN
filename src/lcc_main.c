@@ -472,15 +472,21 @@ static void start_board(void)
 #endif
 
 #if !RR_LED_CYW43
+#ifdef HACK
     uint8_t payload[8] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+#endif
 
     /* demo init name from step 3 */
     xl2515_init(KBPS125);
+#ifdef HACK
     xl2515_write_reg_byte(CANCTRL, REQOP_LOOPBACK | CLKOUT_ENABLED);
+#endif
     //CANINTE = RX0IE | RX1IE (0x03);
 
     printf("TARGET can init\n");
+#ifdef HACK
     xl2515_send(0x123, payload, 8); //CLS: Note just for loopback test
+#endif
     g_can_ready = 1;
 #endif
 
@@ -503,6 +509,15 @@ static void blink_led(int led_on)
 #else
     gpio_put(PICO_DEFAULT_LED_PIN, led_on);
 #endif
+
+// Debug added on 24-Sep-2026 @ 2:43 PM CST to help debug why with physical LCC/CAN wired there are no bytes received
+    printf("TARGET can cfg CNF=%02x %02x %02x INTE=%02x RXB0=%02x RXB1=%02x\n",
+       xl2515_read_reg_byte(CNF1),
+       xl2515_read_reg_byte(CNF2),
+       xl2515_read_reg_byte(CNF3),
+       xl2515_read_reg_byte(CANINTE),
+       xl2515_read_reg_byte(RXB0CTRL),
+       xl2515_read_reg_byte(RXB1CTRL));
 }
 
 static void debug_beat(int led_on)
@@ -809,9 +824,11 @@ int main(void)
     xTaskCreate(usb_task, "usb", 512, 0, 2, 0);
 #endif
 
+#ifdef HACK
     if (xTaskCreate(can_task, "can", 2048, 0, 2, 0) != pdPASS) {
         printf("TARGET can task create failed\n");
     } 
+#endif
     vTaskStartScheduler();
     while (1) {
         tight_loop_contents();

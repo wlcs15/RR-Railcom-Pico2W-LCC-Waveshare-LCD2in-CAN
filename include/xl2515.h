@@ -5,7 +5,7 @@
 #include "pico/stdlib.h"
 
 void xl2515_write_reg_byte(uint8_t reg, uint8_t byte);
-
+uint8_t xl2515_read_reg_byte(uint8_t reg);
 
 // ## Configuration Registers */
 #define CANSTAT       0x0E
