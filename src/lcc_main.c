@@ -13,6 +13,7 @@
 #include "restouch35.h"
 
 #include "pico/stdio_usb.h"
+#include "pico/stdio.h"
 #include "pico/stdlib.h"
 
 #include "FreeRTOS.h"
@@ -56,6 +57,10 @@ void rr_uart_raw_banner(void);
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+
+#if !RR_LED_CYW43
+#include "tusb.h"
+#endif
 
 int64_t mbedtls_ms_time(void)
 {
@@ -479,6 +484,7 @@ static void debug_beat(int led_on)
 
 static TickType_t g_hub_next_try;
 
+#if RR_LED_CYW43 && RR_WIFI_WRAP
 static void hub_ensure(void)
 {
 #if RR_WIFI_WRAP
@@ -534,11 +540,40 @@ static void wifi_ensure(void)
     cyw43_arch_lwip_end();
 #endif
 }
+#endif
+
+#if !RR_LED_CYW43
+static void rr_usb_puts(const char *s)
+{
+   int n = 0;
+
+    while (!tud_cdc_connected() && n < 100) {
+        tud_task();
+        vTaskDelay(pdMS_TO_TICKS(50));
+        n++;
+    }
+    if (!tud_cdc_connected()) {
+        return;
+    }
+    tud_cdc_write_str(s);
+    tud_cdc_write_flush();
+}
+#endif
+  
 
 static void app_task(void *unused)
 {
     (void)unused;
+#if !RR_LED_CYW43
+    rr_usb_puts("TARGET boot\r\n");
+    rr_usb_puts("TARGET task\r\n");
+#endif
+#ifdef HACK
+    printf("TARGET boot\n");
     printf("TARGET task\n");
+    printf("TARGET loop tick %lu\n", (unsigned long)xTaskGetTickCount());
+    fflush(stdout);
+#endif
     start_board();
     if (!checks_ok()) {
         while (1) {
@@ -555,8 +590,10 @@ static void app_task(void *unused)
 #ifdef DEBUG
         printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
+#if RR_LED_CYW43 && RR_WIFI_WRAP
         wifi_ensure();
         hub_ensure();
+#endif
         led_on = !led_on;
         blink_led(led_on);
 #ifdef DEBUG        
@@ -591,13 +628,59 @@ static void alive_task(void *unused)
 }
 #endif
 
+#if !RR_LED_CYW43
+
+static void usb_task(void *unused)
+{
+    (void)unused;
+    for (;;) {
+        tud_task();
+#ifdef HACK
+        if (tud_cdc_connected()) {
+            const char *m = "TARGET cdc tick!\r\n";
+            tud_cdc_write(m, 18);
+            tud_cdc_write_flush();
+        }
+#endif
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+#endif
+
 int main(void)
 {
     rr_uart_raw_banner();
     stdio_init_all();
-    rr_uart_ring_init();
+    stdio_usb_init();
+    stdio_set_driver_enabled(&stdio_usb, true);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    /* USB wait + TARGET boot ... */
+#if RR_LED_CYW43
+    rr_uart_ring_init(); 
+#endif
+
+#ifdef HACK
+    {
+        unsigned i;
+        for (i = 0; i < 40; i++) {
+            if (stdio_usb_connected()) {
+                break;
+            }
+            sleep_ms(100);
+        }
+    }
+#endif
+
+    printf("TARGET boot\n");
+    fflush(stdout);
+
+
+    //rr_uart_ring_init(); // CLS - HACK - appremenly this caused issues on the RPI2350-CAN
+#ifdef HACK
     printf("TARGET boot\n");
     RR_DBG("TARGET debug uart0 115200 GP0-TX GP1-RX\n");
+#endif
 #ifdef DEBUG
     if (xTaskCreate(alive_task, "alive", 1024, 0, 1, 0) != pdPASS) {
         printf("TARGET alive task failed\n");
@@ -606,6 +689,11 @@ int main(void)
     if (xTaskCreate(app_task, "lcc", 8192, 0, 1, 0) != pdPASS) {
         printf("TARGET task create failed\n");
     }
+
+#if !RR_LED_CYW43
+    xTaskCreate(usb_task, "usb", 512, 0, 2, 0);
+#endif
+
     vTaskStartScheduler();
     while (1) {
         tight_loop_contents();
