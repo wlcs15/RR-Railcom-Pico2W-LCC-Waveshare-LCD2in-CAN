@@ -824,11 +824,10 @@ int main(void)
     xTaskCreate(usb_task, "usb", 512, 0, 2, 0);
 #endif
 
-#ifdef HACK
     if (xTaskCreate(can_task, "can", 2048, 0, 2, 0) != pdPASS) {
         printf("TARGET can task create failed\n");
     } 
-#endif
+    
     vTaskStartScheduler();
     while (1) {
         tight_loop_contents();

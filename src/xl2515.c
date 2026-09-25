@@ -100,13 +100,17 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     gpio_set_function(XL2515_MOSI_PIN, GPIO_FUNC_SPI);
     gpio_set_function(XL2515_MISO_PIN, GPIO_FUNC_SPI);
 
-    gpio_init(XL2515_CS_PIN);
+//Grok wants this code deleted and replaced
+ gpio_init(XL2515_CS_PIN);
+    gpio_set_function(XL2515_CS_PIN, GPIO_FUNC_SIO);
+    gpio_disable_pulls(XL2515_CS_PIN);
     gpio_set_dir(XL2515_CS_PIN, GPIO_OUT);
-    gpio_put(XL2515_CS_PIN, 1);   /* idle high — required */
+    gpio_put(XL2515_CS_PIN, 1);
+    printf("TARGET can cs out=%d pad=%d\n",
+           gpio_get_out_level(XL2515_CS_PIN),
+           gpio_get(XL2515_CS_PIN));
 
-    printf("TARGET can cs idle %d pin %d\n",
-           gpio_get(XL2515_CS_PIN), XL2515_CS_PIN);
-
+// End of delete
     gpio_init(XL2515_INT_PIN);
     gpio_set_dir(XL2515_INT_PIN, GPIO_IN);
     gpio_pull_up(XL2515_INT_PIN);
