@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 
-void xl2515_write_reg_byte(uint8_t reg, uint8_t byte);
-uint8_t xl2515_read_reg_byte(uint8_t reg);
-
 // ## Configuration Registers */
 #define CANSTAT       0x0E
 #define CANCTRL       0x0F
@@ -421,3 +418,6 @@ bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len);
 #endif
 
 #endif
+
+uint8_t xl2515_read_reg_byte(uint8_t reg);
+int xl2515_is_up(void);

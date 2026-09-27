@@ -430,25 +430,6 @@ static int checks_ok(void)
     }
     return 1;
 }
-static volatile uint32_t g_can_irq;
-
-static void can_int_isr(uint gpio, uint32_t events)
-{
-    (void)events;
-    if (gpio == RR_CAN_INT_GPIO) {
-        g_can_irq++;
-    }
-}
-
-static void can_irq_attach(void)
-{
-    gpio_init(RR_CAN_INT_GPIO);
-    gpio_set_dir(RR_CAN_INT_GPIO, GPIO_IN);
-    gpio_pull_up(RR_CAN_INT_GPIO);
-    gpio_set_irq_enabled_with_callback(
-        RR_CAN_INT_GPIO, GPIO_IRQ_EDGE_FALL, true, can_int_isr);
-}
-
 static volatile int g_can_ready;
 static void start_board(void)
 {
@@ -510,14 +491,15 @@ static void blink_led(int led_on)
     gpio_put(PICO_DEFAULT_LED_PIN, led_on);
 #endif
 
-// Debug added on 24-Sep-2026 @ 2:43 PM CST to help debug why with physical LCC/CAN wired there are no bytes received
-    printf("TARGET can cfg CNF=%02x %02x %02x INTE=%02x RXB0=%02x RXB1=%02x\n",
-       xl2515_read_reg_byte(CNF1),
-       xl2515_read_reg_byte(CNF2),
-       xl2515_read_reg_byte(CNF3),
-       xl2515_read_reg_byte(CANINTE),
-       xl2515_read_reg_byte(RXB0CTRL),
-       xl2515_read_reg_byte(RXB1CTRL));
+    if (xl2515_is_up()) {
+        printf("TARGET can cfg CNF=%02x %02x %02x INTE=%02x RXB0=%02x RXB1=%02x\n",
+               xl2515_read_reg_byte(CNF1),
+               xl2515_read_reg_byte(CNF2),
+               xl2515_read_reg_byte(CNF3),
+               xl2515_read_reg_byte(CANINTE),
+               xl2515_read_reg_byte(RXB0CTRL),
+               xl2515_read_reg_byte(RXB1CTRL));
+    }
 }
 
 static void debug_beat(int led_on)
@@ -738,11 +720,26 @@ static void can_task(void *unused)
     uint8_t data[8];
     uint8_t len;
 
+    uint32_t last_ms = 0;
+
     (void)unused;
     while (!g_can_ready) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     for (;;) {
+        uint32_t now = to_ms_since_boot(get_absolute_time());
+        if (xl2515_is_up() && now - last_ms >= 1000u) {
+            last_ms = now;
+            printf("TARGET can stat %02x eflg %02x tec %u rec %u\n",
+                   xl2515_read_reg_byte(CANSTAT),
+                   xl2515_read_reg_byte(EFLG),
+                   xl2515_read_reg_byte(TEC),
+                   xl2515_read_reg_byte(REC));
+            {
+                uint8_t payload[8] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
+                xl2515_send(0x123, payload, 8);
+            }
+        }
         while (xl2515_recv(&id, data, &len)) {
             unsigned i;
             printf("TARGET can rx %08lx %u",
@@ -798,9 +795,7 @@ int main(void)
     setvbuf(stdout, NULL, _IONBF, 0);
 
     /* USB wait + TARGET boot ... */
-#if RR_LED_CYW43
-    rr_uart_ring_init(); 
-#endif
+    rr_uart_ring_init();
 
     printf("TARGET boot\n");
     fflush(stdout);

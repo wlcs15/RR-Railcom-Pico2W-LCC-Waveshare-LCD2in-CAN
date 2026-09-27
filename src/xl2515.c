@@ -11,9 +11,7 @@
 
 uint32_t filter_id = 0x123;
 bool g_xl2515_recv_flag = false;
-
-//void xl2515_write_reg_byte(uint8_t reg, uint8_t byte);
-
+uint8_t g_stat_after_reset;
 static void xl2515_write_reg(uint8_t reg, uint8_t *data, uint8_t len)
 {
     uint8_t buf[len + 2];
@@ -35,10 +33,8 @@ static void xl2515_read_reg(uint8_t reg, uint8_t *data, uint8_t len)
     spi_read_blocking(XL2515_SPI_PORT, 0, data, len);
     gpio_put(XL2515_CS_PIN, 1);
 }
-#ifdef HACK
-static 
-#endif
-void xl2515_write_reg_byte(uint8_t reg, uint8_t byte)
+
+static void xl2515_write_reg_byte(uint8_t reg, uint8_t byte)
 {
     uint8_t cmd = CAN_WRITE;
     gpio_put(XL2515_CS_PIN, 0);
@@ -48,9 +44,6 @@ void xl2515_write_reg_byte(uint8_t reg, uint8_t byte)
     gpio_put(XL2515_CS_PIN, 1);
 }
 
-#ifdef HACK
-static 
-#endif
 uint8_t xl2515_read_reg_byte(uint8_t reg)
 {
     uint8_t cmd = CAN_READ;
@@ -100,39 +93,23 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     gpio_set_function(XL2515_MOSI_PIN, GPIO_FUNC_SPI);
     gpio_set_function(XL2515_MISO_PIN, GPIO_FUNC_SPI);
 
-//Grok wants this code deleted and replaced
- gpio_init(XL2515_CS_PIN);
-    gpio_set_function(XL2515_CS_PIN, GPIO_FUNC_SIO);
-    gpio_disable_pulls(XL2515_CS_PIN);
+    gpio_init(XL2515_CS_PIN);
+    gpio_init(XL2515_INT_PIN);
+
     gpio_set_dir(XL2515_CS_PIN, GPIO_OUT);
     gpio_put(XL2515_CS_PIN, 1);
-    printf("TARGET can cs out=%d pad=%d\n",
-           gpio_get_out_level(XL2515_CS_PIN),
-           gpio_get(XL2515_CS_PIN));
-
-// End of delete
-    gpio_init(XL2515_INT_PIN);
     gpio_set_dir(XL2515_INT_PIN, GPIO_IN);
     gpio_pull_up(XL2515_INT_PIN);
-
+    printf("TARGET can cs out=%d pad=%d int=%d\n",
+           gpio_get_out_level(XL2515_CS_PIN), gpio_get(XL2515_CS_PIN),
+           gpio_get(XL2515_INT_PIN));
+    gpio_set_irq_enabled_with_callback(XL2515_INT_PIN, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true, gpio_callback);
 
     xl2515_reset();
-    printf("TARGET can after reset STAT=%02x CTRL=%02x CS=%d\n",
-           xl2515_read_reg_byte(CANSTAT),
-           xl2515_read_reg_byte(CANCTRL),
-           gpio_get(XL2515_CS_PIN));
     sleep_ms(100);
-    printf("TARGET can after reset and delay STAT=%02x CTRL=%02x CS=%d\n",
-           xl2515_read_reg_byte(CANSTAT),
-           xl2515_read_reg_byte(CANCTRL),
-           gpio_get(XL2515_CS_PIN));
-
-//#ifdef HACK
-    gpio_set_irq_enabled_with_callback(XL2515_INT_PIN, GPIO_IRQ_EDGE_FALL, true, gpio_callback); // Commented out for first bringup on hardware, was | GPIO_IRQ_EDGE_RISE
-//#endif
-
-    //xl2515_reset();
-    //sleep_ms(100);
+    g_stat_after_reset = xl2515_read_reg_byte(CANSTAT);
+    printf("TARGET can after reset STAT=%02x CTRL=%02x\n",
+           g_stat_after_reset, xl2515_read_reg_byte(CANCTRL));
 
     // #set baud rate 125Kbps
     // #<7:6>SJW=00(1TQ)
@@ -142,12 +119,9 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     xl2515_write_reg_byte(CNF1, can_rate_arr[rate_kbps][0]);
     xl2515_write_reg_byte(CNF2, can_rate_arr[rate_kbps][1]);
     xl2515_write_reg_byte(CNF3, can_rate_arr[rate_kbps][2]);
-
-    printf("TARGET can after CAN Writes STAT=%02x CTRL=%02x CS=%d\n",
-           xl2515_read_reg_byte(CANSTAT),
-           xl2515_read_reg_byte(CANCTRL),
-           gpio_get(XL2515_CS_PIN));
-
+    printf("TARGET can cfg CNF=%02x %02x %02x\n",
+           xl2515_read_reg_byte(CNF1), xl2515_read_reg_byte(CNF2),
+           xl2515_read_reg_byte(CNF3));
 
     // #set TXB0,TXB1
     // #<15:5> SID 11bit canid
@@ -159,51 +133,29 @@ void xl2515_init(xl2515_rate_kbps_t rate_kbps)
     xl2515_write_reg_byte(TXB0SIDL, 0xE0);
     xl2515_write_reg_byte(TXB0DLC, 0x40 | DLC_8);
 
-#ifdef HACK // Grok wanted this replaced with the just below alternate
     // #Set RX
     xl2515_write_reg_byte(RXB0SIDH, 0x00);
     xl2515_write_reg_byte(RXB0SIDL, 0x60);
-    xl2515_write_reg_byte(RXB0CTRL, 0x60); // To receive all IDs, changed this to 0x60, was 0x00 for first bring up before enable of interrupts
+    xl2515_write_reg_byte(RXB0CTRL, 0x60); /* accept every ID so an LCC refresh is visible */
     xl2515_write_reg_byte(RXB0DLC, DLC_8);
 
     xl2515_write_reg_byte(RXF0SIDH, (filter_id >> 3) & 0XFF);
     xl2515_write_reg_byte(RXF0SIDL, (filter_id & 0x07) << 5);
-    xl2515_write_reg_byte(RXM0SIDH, 0xFF);
-    xl2515_write_reg_byte(RXM0SIDL, 0xE0);
+    xl2515_write_reg_byte(RXM0SIDH, 0x00);
+    xl2515_write_reg_byte(RXM0SIDL, 0x00);
 
     // #can int
     xl2515_write_reg_byte(CANINTF, 0x00); // clean interrupt flag
     xl2515_write_reg_byte(CANINTE, 0x01); // Receive Buffer 0 Full Interrupt Enable Bit
-#else
-// Grok wants code inserted here on 24-Sep-2026 @ 2:57 PM CST 
-    xl2515_write_reg_byte(RXB0SIDH, 0x00);
-    xl2515_write_reg_byte(RXB0SIDL, 0x60);
-    xl2515_write_reg_byte(RXB0CTRL, 0x64); /* RXM=11, BUKT */
-    xl2515_write_reg_byte(RXB0DLC, DLC_8);
 
-    xl2515_write_reg_byte(RXB1CTRL, 0x60);
-
-    xl2515_write_reg_byte(RXM0SIDH, 0x00);
-    xl2515_write_reg_byte(RXM0SIDL, 0x00);
-    xl2515_write_reg_byte(RXM1SIDH, 0x00);
-    xl2515_write_reg_byte(RXM1SIDL, 0x00);
-
-    xl2515_write_reg_byte(CANINTF, 0x00);
-    xl2515_write_reg_byte(CANINTE, 0x03);
-#endif
-
-
-    xl2515_write_reg_byte(CANCTRL, REQOP_LISTEN | CLKOUT_ENABLED); //CLS: ToDo - Was REQOP_NORMAL | CLKOUT_ENABLED 
+    xl2515_write_reg_byte(CANCTRL, REQOP_NORMAL | CLKOUT_ENABLED);
     uint8_t dummy = xl2515_read_reg_byte(CANSTAT);
-    if ((dummy & 0xe0) != OPMODE_LISTEN)
+    printf("TARGET can mode STAT=%02x\n", dummy);
+    if ((dummy & 0xe0) != OPMODE_NORMAL)
     {
-        printf("!OPMODE_LISTEN\r\n");
-        xl2515_write_reg_byte(CANCTRL, REQOP_LISTEN | CLKOUT_ENABLED); // #set normal mode //CLS: ToDo - Was REQOP_NORMAL | CLKOUT_ENABLED
+        printf("!OPMODE_NORMAL\n");
+        xl2515_write_reg_byte(CANCTRL, REQOP_NORMAL | CLKOUT_ENABLED);
     }
-
-// Added for debugging why the wired CAN bus was not working on 24-Sep-2026 @ 2:42 PM CST
-   xl2515_write_reg_byte(CANINTF, 0x00);
-   xl2515_write_reg_byte(CANINTE, 0x03);
 }
 
 void xl2515_send(uint32_t can_id, uint8_t *data, uint8_t len)
@@ -215,11 +167,17 @@ void xl2515_send(uint32_t can_id, uint8_t *data, uint8_t len)
         dly++;
     }
 
-    xl2515_write_reg_byte(TXB0SIDH, (can_id >> 3) & 0XFF);
-    xl2515_write_reg_byte(TXB0SIDL, (can_id & 0x07) << 5);
-
-    xl2515_write_reg_byte(TXB0EID8, 0);
-    xl2515_write_reg_byte(TXB0EID0, 0);
+    if (can_id <= 0x7FFu) {
+        xl2515_write_reg_byte(TXB0SIDH, (uint8_t)((can_id >> 3) & 0xFFu));
+        xl2515_write_reg_byte(TXB0SIDL, (uint8_t)((can_id & 7u) << 5));
+        xl2515_write_reg_byte(TXB0EID8, 0);
+        xl2515_write_reg_byte(TXB0EID0, 0);
+    } else {
+        xl2515_write_reg_byte(TXB0SIDH, (uint8_t)((can_id >> 21) & 0xFFu));
+        xl2515_write_reg_byte(TXB0SIDL, (uint8_t)(((can_id >> 13) & 0xE0u) | EXIDE_SET | ((can_id >> 16) & 3u)));
+        xl2515_write_reg_byte(TXB0EID8, (uint8_t)((can_id >> 8) & 0xFFu));
+        xl2515_write_reg_byte(TXB0EID0, (uint8_t)(can_id & 0xFFu));
+    }
     xl2515_write_reg_byte(TXB0DLC, len);
 
     xl2515_write_reg(TXB0D0, data, len);
@@ -229,18 +187,29 @@ void xl2515_send(uint32_t can_id, uint8_t *data, uint8_t len)
     xl2515_write_reg_byte(TXB0CTRL, 0x08);
 }
 
-#ifdef HACK
+void xl2515_set_mode(uint8_t mode)
+{
+    xl2515_write_reg_byte(CANCTRL, mode | CLKOUT_ENABLED);
+}
+
 bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len)
 {
-    if (g_xl2515_recv_flag == false)
+    if (g_xl2515_recv_flag == false && (xl2515_read_reg_byte(CANINTF) & 0x01) == 0)
     {
         return false;
     }
     g_xl2515_recv_flag = false;
 
-    uint16_t sid_h = xl2515_read_reg_byte(RXB0SIDH);
-    uint16_t sid_l = xl2515_read_reg_byte(RXB0SIDL);
-    *can_id = (sid_h << 3) | (sid_l >> 5);
+    uint8_t sid_h = xl2515_read_reg_byte(RXB0SIDH);
+    uint8_t sid_l = xl2515_read_reg_byte(RXB0SIDL);
+    if (sid_l & EXIDE_SET) {
+        *can_id = ((uint32_t)sid_h << 21) | ((uint32_t)(sid_l & 0xE0u) << 13) |
+                  ((uint32_t)(sid_l & 3u) << 16) |
+                  ((uint32_t)xl2515_read_reg_byte(RXB0EID8) << 8) |
+                  xl2515_read_reg_byte(RXB0EID0);
+    } else {
+        *can_id = ((uint32_t)sid_h << 3) | (sid_l >> 5);
+    }
 
     while (1)
     {
@@ -263,25 +232,8 @@ bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len)
     xl2515_write_reg_byte(RXB0SIDL, 0x60);
     return true;
 }
-#endif
 
-bool xl2515_recv(uint32_t *can_id, uint8_t *data, uint8_t *len)
+int xl2515_is_up(void)
 {
-    uint8_t i;
-
-    if ((xl2515_read_reg_byte(CANINTF) & 0x01) == 0) {
-        return false;
-    }
-    *can_id = ((uint32_t)xl2515_read_reg_byte(RXB0SIDH) << 3) |
-              (xl2515_read_reg_byte(RXB0SIDL) >> 5);
-    *len = xl2515_read_reg_byte(RXB0DLC) & 0x0F;
-    if (*len > 8) {
-        *len = 8;
-    }
-    for (i = 0; i < *len; i++) {
-        data[i] = xl2515_read_reg_byte(RXB0D0 + i);
-    }
-    xl2515_write_reg_byte(CANINTF, 0);
-    return true;
+    return 1;
 }
-
