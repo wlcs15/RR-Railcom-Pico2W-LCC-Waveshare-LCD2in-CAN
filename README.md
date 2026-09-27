@@ -4,6 +4,8 @@ OwlThree node **05.01.01.01.A5.05**. This repository is the Pico 2 W LCC node: W
 
 FreeRTOS for the Pico 2 W comes from `~/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel` on branch `pico2w`. That branch checks out the community port `portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ`. The kernel `main` branch does not have that port populated. `FREERTOS_KERNEL_PATH` in the environment is not used, because it points at a different tree. Wi-Fi and the LCC task both run on core 0. `configNUMBER_OF_CORES` is 1. The wireless LED toggles twice a second after the radio starts.
 
+Tag **v1.0.5** on branch `RP2350-Transmit-Test` records the RP2350-CAN board, not the Pico 2 W Wi-Fi node. `binaries/RP2350-CAN-Demo/` is the Waveshare zip with its factory `C/rp2350_can.uf2`. `demo/rp2350_can/` is the copy that this repo builds. After a full flash erase, that build printed `TARGET can after reset STAT=80` and a Wemos D1 R32 with a Waveshare RS485 CAN Shield printed `TARGET received 0x123`. The FreeRTOS image on this branch uses that same CAN startup and also sent `0x123`. Extended LCC IDs are still deferred. Rebuild trees under `binaries/**/build/` are ignored.
+
 Tag **v0.05** answers SNIP, protocol support, and a flash-resident CDI, and raises host line coverage of the shared sources above 80% (about 90% lines). The same Unity tests are compiled into the Pico image. Configure opens on an identification page. Writable RailCom segments wait.
 
 Tag **v0.04** dials the JMRI hub. The hub address is gitignored `local/hub_host.h` (`RR_HUB_HOST`). On this LAN the Pico prints `TARGET ip 192.168.1.214` and `TARGET lan 192.168.1 same`, and JMRI lists node 05.01.01.01.A5.05. UART0 debug from v0.03 is unchanged.

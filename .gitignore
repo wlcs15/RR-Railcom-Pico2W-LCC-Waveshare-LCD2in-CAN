@@ -7,6 +7,12 @@
 *.o
 *.obj
 
+# Vendor demo rebuilds. Keep the shipped .uf2 files.
+binaries/**/build/
+*.elf
+*.dis
+*.map
+
 # Precompiled Headers
 *.gch
 *.pch
