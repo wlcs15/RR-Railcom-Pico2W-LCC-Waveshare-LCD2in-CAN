@@ -93,7 +93,7 @@ static void test_snip_and_cdi_read(void)
                          out, (int)sizeof out);
     TEST_ASSERT_GREATER_THAN(0, n);
     TEST_ASSERT_NOT_NULL(strstr(out, "3C3F"));
-    TEST_ASSERT_NOT_NULL(strstr(rr_cdi_xml(), "Pico2W-A505"));
+    TEST_ASSERT_NOT_NULL(strstr(rr_cdi_xml(), "PicoW-ResTouch-A505"));
 }
 
 static void test_consumer_event(void)

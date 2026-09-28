@@ -13,7 +13,7 @@ static const char kCdi[] =
     "<?xml version=\"1.0\"?>"
     "<cdi xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
     "xsi:noNamespaceSchemaLocation=\"http://openlcb.org/schema/cdi/1/3/cdi.xsd\">"
-    "<identification><manufacturer>OwlThree</manufacturer><model>Pico2W-A505</model>"
+    "<identification><manufacturer>OwlThree</manufacturer><model>PicoW-ResTouch-A505</model>"
     "<hardwareVersion>Pico2W</hardwareVersion><softwareVersion>0.04</softwareVersion>"
     "</identification><acdi/></cdi>";
 
