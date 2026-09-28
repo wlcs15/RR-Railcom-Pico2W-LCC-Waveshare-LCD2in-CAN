@@ -78,6 +78,8 @@ target_compile_definitions(lcc_node PRIVATE
     RR_KEY0_GPIO=${RR_KEY0_GPIO}
     RR_WIFI_WRAP=${RR_WIFI_WRAP}
     RR_FIRMWARE_TESTS=1
+    UNITY_SUPPORT_64
+    UNITY_INCLUDE_64
     DEBUG)
 
 pico_enable_stdio_usb(lcc_node 1)

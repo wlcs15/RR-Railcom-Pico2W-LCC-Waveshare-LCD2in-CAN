@@ -6,6 +6,18 @@ FreeRTOS for the Pico 2 W comes from `~/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel` on 
 
 Tag **v0.05** answers SNIP, protocol support, and a flash-resident CDI, and raises host line coverage of the shared sources above 80% (about 90% lines). The same Unity tests are compiled into the Pico image. Configure opens on an identification page. Writable RailCom segments wait.
 
+## Bench 2026-09-28
+
+Pico 2 W serial `DB6C98D898C72CF7` (`/dev/ttyACM3`) ran the on-target Unity image from `main`. The first boot reported 13 tests and 1 failure: `test_key0_default_and_node_id` stopped with `Unity 64-bit Support Disabled`. `UNITY_SUPPORT_64` and `UNITY_INCLUDE_64` are now on the firmware target. The rebuilt image reported `13 Tests 0 Failures 0 Ignored` and `TARGET unity ok`, node `05.01.01.01.A5.05`.
+
+That same boot printed `TARGET wifi unwrap failed`. `local/wifi_psk_wrap.inc` is format byte `0x02` (the Pico W script). The Pico 2 W image expects format byte `0x01` from `scripts/provision_wifi.py`. The previous Pico 2 W ciphertext is still `local/wifi_psk_wrap.inc.old`. Re-run the Pico 2 W script from a TTY; do not pipe the password.
+
+```
+python3 scripts/provision_wifi.py
+```
+
+Pico W serial `E6647C15674D422D` is node `05.01.01.01.A5.06` on `pico-w-restouch-3.5`. Its on-target run was 13 tests, 0 failures. Its Wi-Fi wrap is a different script, and the node id in that script must be `A5.06`.
+
 Tag **v0.04** dials the JMRI hub. The hub address is gitignored `local/hub_host.h` (`RR_HUB_HOST`). On this LAN the Pico prints `TARGET ip 192.168.1.214` and `TARGET lan 192.168.1 same`, and JMRI lists node 05.01.01.01.A5.05. UART0 debug from v0.03 is unchanged.
 
 Tag **v0.03** runs that image under FreeRTOS on core 0. UART0 on GP0 (TX) and GP1 (RX) is interrupt-driven with 512-byte rings at 115200. A `DEBUG` build prints `TARGET alive` on that pin. The wireless LED toggles after `cyw43_arch_init` returns. lwIP mailboxes are non-zero so the radio init does not panic.
