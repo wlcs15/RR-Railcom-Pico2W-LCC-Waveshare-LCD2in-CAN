@@ -12,9 +12,9 @@
 #include <stdint.h>
 
 #define RR_GC_PORT 12021
-#define RR_ALIAS_A505 0x0505
+#define RR_ALIAS_A505 0x0507
 
-/* Producer ...A5.05.00.01 and consumer ...A5.05.00.00. */
+/* Producer ...A5.07.00.01 and consumer ...A5.07.00.00. */
 #define RR_EVENT_TAIL_PRODUCER 0x01
 #define RR_EVENT_TAIL_CONSUMER 0x00
 

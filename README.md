@@ -6,6 +6,20 @@ FreeRTOS for the Pico 2 W comes from `~/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel` on 
 
 Tag **v1.05** on branch `RP2350-Transmit-Test` records the RP2350-CAN board, not the Pico 2 W Wi-Fi node. `binaries/RP2350-CAN-Demo/` is the Waveshare zip with its factory `C/rp2350_can.uf2`. `demo/rp2350_can/` is the copy that this repo builds. After a full flash erase, that build printed `TARGET can after reset STAT=80` and a Wemos D1 R32 with a Waveshare RS485 CAN Shield printed `TARGET received 0x123`. The FreeRTOS image on this branch uses that same CAN startup and also sent `0x123`. Extended LCC IDs are still deferred. Rebuild trees under `binaries/**/build/` are ignored.
 
+## Node ids
+
+This branch is **05.01.01.01.A5.07** when it announces an OpenLCB node. Tag `v1.05` is the CAN bring-up, not a new node-id tag.
+
+| Node | Hardware | Where the full firmware lives | Tag |
+| --- | --- | --- | --- |
+| A5.01 | Wemos D1 R32, Wi-Fi | Wemos repo, `fix-bugs-cls-Wemos-ESP32-and-Waveshare_4inch_touch_display` | `v1.0.4` |
+| A5.02 | Mega, wired CAN | Servo repo, Mega build (`RR_USE_KS0258` off) | existing Mega tag |
+| A5.03 | Wemos D1 R32, servo Wi-Fi | Servo repo, `wemos-d1r32` | not the CAN-shield test branches |
+| A5.04 | ESP32-S3 4.3 inch panel | `LCCControlPanelTouchscreen`, `cls_waveshare_ESP32-S3_4.3Inch_WiFi` | `v1.0.5` in that repo |
+| A5.05 | Pico 2 W, Wi-Fi | this repo, `main` | `v0.05` |
+| A5.06 | Pico W + 3.5 inch panel | this repo, `pico-w-restouch-3.5` | none yet |
+| A5.07 | RP2350-CAN | this repo, `RP2350-Transmit-Test` | `v1.05` is the CAN bring-up, not a retag of the node |
+
 Tag **v0.05** answers SNIP, protocol support, and a flash-resident CDI, and raises host line coverage of the shared sources above 80% (about 90% lines). The same Unity tests are compiled into the Pico image. Configure opens on an identification page. Writable RailCom segments wait.
 
 Tag **v0.04** dials the JMRI hub. The hub address is gitignored `local/hub_host.h` (`RR_HUB_HOST`). On this LAN the Pico prints `TARGET ip 192.168.1.214` and `TARGET lan 192.168.1 same`, and JMRI lists node 05.01.01.01.A5.05. UART0 debug from v0.03 is unchanged.
