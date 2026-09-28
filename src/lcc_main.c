@@ -481,7 +481,7 @@ static TickType_t g_hub_next_try;
 
 static void hub_ensure(void)
 {
-#if RR_WIFI_WRAP
+#if RR_LED_CYW43 && RR_WIFI_WRAP
     TickType_t now = xTaskGetTickCount();
 
     if (!g_ip_text[0]) {
@@ -505,7 +505,7 @@ static TickType_t g_wifi_next_try;
 
 static void wifi_ensure(void)
 {
-#if RR_WIFI_WRAP
+#if RR_LED_CYW43 && RR_WIFI_WRAP
     TickType_t now = xTaskGetTickCount();
 
     if (g_ip_text[0] || !g_wifi_psk[0]) {
