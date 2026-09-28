@@ -65,7 +65,7 @@ static void test_conflict_counter_sees_duplicates(void)
 static void test_key0_default_and_node_id(void)
 {
     TEST_ASSERT_EQUAL_INT(15, RR_KEY0_GPIO);
-    TEST_ASSERT_EQUAL_UINT64(0x05010101A505ULL, (unsigned long long)RR_NODE_ID_U64);
+    TEST_ASSERT_EQUAL_UINT64(0x05010101A506ULL, (unsigned long long)RR_NODE_ID_U64);
 }
 
 int rr_run_all_tests(void)

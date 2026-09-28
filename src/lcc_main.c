@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Charles L. Sherman
  * SPDX-License-Identifier: MIT
  *
- * Pico 2 W LCC node 05.01.01.01.A5.05.
+ * Pico 2 W LCC node 05.01.01.01.A5.06.
  * Wi-Fi station when a gitignored wrap is present. GridConnect TCP 12021.
  * No display and no CAN HAT in this image.
  */
@@ -104,11 +104,11 @@ static volatile int g_led_ready;
 
 static void print_identity(void)
 {
-    printf("TARGET node 05.01.01.01.A5.05\n");
+    printf("TARGET node 05.01.01.01.A5.06\n");
     printf("TARGET board %s panel %s transport %s\n",
            RR_PICO_BOARD, RR_LCD_PANEL, RR_LCC_TRANSPORT);
     printf("TARGET pin conflicts %d\n", rr_pin_conflict_count());
-    printf("OpenLCB Node ID: 05.01.01.01.A5.05\n");
+    printf("OpenLCB Node ID: 05.01.01.01.A5.06\n");
 }
 
 #if RR_LED_CYW43

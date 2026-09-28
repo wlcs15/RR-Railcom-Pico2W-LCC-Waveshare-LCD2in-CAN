@@ -8,7 +8,7 @@
 #ifndef RR_BOARD_PINS_H
 #define RR_BOARD_PINS_H
 
-#define RR_NODE_ID_U64 0x05010101A505ULL
+#define RR_NODE_ID_U64 0x05010101A506ULL
 
 #define RR_LCD_DC_GPIO 8
 #define RR_LCD_CS_GPIO 9
@@ -43,7 +43,7 @@ _Static_assert(RR_LCD_SCK_GPIO != RR_CAN_SCK_GPIO, "LCD and CAN clocks must diff
 _Static_assert(RR_LCD_CS_GPIO != RR_CAN_CS_GPIO, "LCD and CAN chip-selects must differ");
 _Static_assert(RR_LCD_MOSI_GPIO != RR_CAN_MOSI_GPIO, "LCD and CAN MOSI must differ");
 _Static_assert(RR_CAN_INT_GPIO != RR_KEY0_GPIO, "CAN interrupt and KEY0 must differ");
-_Static_assert(RR_NODE_ID_U64 == 0x05010101A505ULL, "node id must stay 05.01.01.01.A5.05");
+_Static_assert(RR_NODE_ID_U64 == 0x05010101A506ULL, "node id must stay 05.01.01.01.A5.06");
 
 int rr_pin_assigned_count(void);
 int rr_pin_at(int index);

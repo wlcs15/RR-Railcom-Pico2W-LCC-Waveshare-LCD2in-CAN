@@ -116,3 +116,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\flash_lcc.ps1
 ```
 
 USB serial is the Pico CDC port. The three-pin debug header is not used.
+
+## Node ids
+
+This branch is **05.01.01.01.A5.06** (Pico W and the 3.5 inch panel). Do not reuse A5.05.
+
+| Node | Hardware | Where the full firmware lives | Tag |
+| --- | --- | --- | --- |
+| A5.01 | Wemos D1 R32, Wi-Fi | Wemos repo, `fix-bugs-cls-Wemos-ESP32-and-Waveshare_4inch_touch_display` | `v1.0.4` |
+| A5.02 | Mega, wired CAN | Servo repo, Mega build (`RR_USE_KS0258` off) | existing Mega tag |
+| A5.03 | Wemos D1 R32, servo Wi-Fi | Servo repo, `wemos-d1r32` | not the CAN-shield test branches |
+| A5.04 | ESP32-S3 4.3 inch panel | `LCCControlPanelTouchscreen`, `cls_waveshare_ESP32-S3_4.3Inch_WiFi` | `v1.0.5` in that repo |
+| A5.05 | Pico 2 W, Wi-Fi | this repo, `main` | `v0.05` |
+| A5.06 | Pico W + 3.5 inch panel | this repo, `pico-w-restouch-3.5` | none yet |
+| A5.07 | RP2350-CAN | this repo, `RP2350-Transmit-Test` | `v1.05` is the CAN bring-up, not a retag of the node |
