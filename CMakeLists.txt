@@ -69,7 +69,8 @@ add_executable(lcc_node
     tests/test_pin_map.c
     tests/test_lcc.c
     third_party/Unity/src/unity.c)
-target_include_directories(lcc_node PRIVATE include third_party/Unity/src)
+target_include_directories(lcc_node PRIVATE include third_party/Unity/src
+    "${CMAKE_CURRENT_SOURCE_DIR}/local")
 if(RR_WIFI_WRAP)
     target_compile_definitions(lcc_node PRIVATE 
         MBEDTLS_CONFIG_FILE="rr_mbedtls_config.h")

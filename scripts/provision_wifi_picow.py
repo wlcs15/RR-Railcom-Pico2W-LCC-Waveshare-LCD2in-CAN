@@ -15,7 +15,7 @@ OUT = os.path.join(ROOT, "local", "wifi_psk_wrap.inc")
 SALT = b"owlthree-pico2w-wifi-wrap-v1"
 MAC = bytes.fromhex("88A29E015D50")
 UID = bytes.fromhex("E6647C15674D422D")
-NODE = bytes.fromhex("05010101A505")
+NODE = bytes.fromhex("05010101A506")
 
 
 def derive_key():

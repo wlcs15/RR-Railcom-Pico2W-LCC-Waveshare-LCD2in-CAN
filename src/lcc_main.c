@@ -44,9 +44,9 @@ void rr_uart_raw_banner(void);
 #define RR_PICO_BOARD "unset"
 #endif
 
+#include "hub_host.h"
 #if RR_LED_CYW43 && RR_WIFI_WRAP
 #include "wifi_psk_wrap.inc"
-#include "hub_host.h"
 #include "mbedtls/gcm.h"
 #include "mbedtls/aes.h"
 #include "mbedtls/hkdf.h"

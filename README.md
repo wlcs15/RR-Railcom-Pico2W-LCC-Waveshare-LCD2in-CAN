@@ -6,6 +6,18 @@ FreeRTOS for the Pico 2 W comes from `~/Git/wlcs15/FreeRTOS/FreeRTOS-Kernel` on 
 
 Tag **v0.05** answers SNIP, protocol support, and a flash-resident CDI, and raises host line coverage of the shared sources above 80% (about 90% lines). The same Unity tests are compiled into the Pico image. Configure opens on an identification page. Writable RailCom segments wait.
 
+## Bench 2026-09-28
+
+Pico W serial `E6647C15674D422D` ran on-target Unity from this branch: `13 Tests 0 Failures 0 Ignored`, `TARGET unity ok`, node `05.01.01.01.A5.06`, panel `RES35`. The functional image flashed after that has the tests compiled out. It was built without a Wi-Fi wrap, so the panel will not show three bars until this board's own ciphertext is written.
+
+`scripts/provision_wifi_picow.py` now binds the wrap to node `05.01.01.01.A5.06`. Run it from a TTY in this checkout. Do not pipe the password, and do not reuse `scripts/provision_wifi.py` (that one is the Pico 2 W, format byte `0x01`).
+
+```
+python3 scripts/provision_wifi_picow.py
+```
+
+`hub_host.h` is included even when the wrap file is absent, so the image still builds and prints `TARGET wifi secret missing`. The Pico 2 W on the same day passed 13 tests after `UNITY_SUPPORT_64` was added on `main`, and both Megas passed 21 on-target tests before `LccTurnoutNode` (`05.01.01.01.A5.02`). The Wemos with the RS485-CAN shield was not given the servo Wi-Fi image: GPIO21 and GPIO22 are I2C on that image and CAN TX/RX on the shield.
+
 Tag **v0.04** dials the JMRI hub. The hub address is gitignored `local/hub_host.h` (`RR_HUB_HOST`). On this LAN the Pico prints `TARGET ip 192.168.1.214` and `TARGET lan 192.168.1 same`, and JMRI lists node 05.01.01.01.A5.05. UART0 debug from v0.03 is unchanged.
 
 Tag **v0.03** runs that image under FreeRTOS on core 0. UART0 on GP0 (TX) and GP1 (RX) is interrupt-driven with 512-byte rings at 115200. A `DEBUG` build prints `TARGET alive` on that pin. The wireless LED toggles after `cyw43_arch_init` returns. lwIP mailboxes are non-zero so the radio init does not panic.
