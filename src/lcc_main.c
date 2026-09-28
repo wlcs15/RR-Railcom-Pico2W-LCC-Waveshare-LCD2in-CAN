@@ -742,6 +742,9 @@ static void can_task(void *unused)
         }
         while (xl2515_recv(&id, data, &len)) {
             unsigned i;
+            if (id <= 0x7FFu) {
+                printf("TARGET can rx standard %03lx\n", (unsigned long)id);
+            }
             printf("TARGET can rx %08lx %u",
                    (unsigned long)id, (unsigned)len);
             for (i = 0; i < len; i++) {
