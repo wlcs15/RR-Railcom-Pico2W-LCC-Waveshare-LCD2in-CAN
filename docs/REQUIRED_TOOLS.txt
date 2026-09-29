@@ -10,5 +10,12 @@ Firmware:
   picotool 2.2.0-a4
   Ninja may live at ~/.pico-sdk/ninja/v1.12.1
 
+On-target emulators (required for CI smoke; not Espressif QEMU or simavr):
+  qemu-system-arm   Cortex-M33 / RP2350 semihosting smoke (QEMU system ARM)
+  renode            RP2040 / Pico W Renode smoke
+  qemu-system-aarch64  optional companion softmmu (report only; not required for Pico M0/M33)
+  Prefer /workspace/tools/bin on PATH when present (see workspace EMULATORS.txt /
+  source /workspace/env/emulators.sh). System package installs are also accepted.
+
 The host tests use Clang. Do not point them at MinGW gcc.
 The LCC image is flashed over the Pico micro-USB port. The three-pin SWD header is not required.
