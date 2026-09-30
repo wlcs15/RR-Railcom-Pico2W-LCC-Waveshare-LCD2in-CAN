@@ -30,7 +30,7 @@ if(NOT LCD_PANEL MATCHES "^(NONE|LCD2|RES35)$")
     message(FATAL_ERROR "LCD_PANEL must be NONE, LCD2, or RES35 (got '${LCD_PANEL}')")
 endif()
 if(LCD_PANEL STREQUAL "RES35")
-    message(FATAL_ERROR "LCD_PANEL=RES35 is not built here. The 3.5 inch HAT shares GP5 and GP21 with Pico-CAN-B.")
+    message(FATAL_ERROR "LCD_PANEL=RES35 is only the Pico W Wi-Fi preview.")
 endif()
 if(NOT RR_KEY0_GPIO MATCHES "^[0-9]+$")
     message(FATAL_ERROR "RR_KEY0_GPIO must be an integer (got '${RR_KEY0_GPIO}')")
@@ -53,8 +53,8 @@ endif()
 add_subdirectory("${RR_FREERTOS_PORT}" freertos_kernel)
 
 set(RR_WIFI_WRAP 0)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local/wifi_psk_wrap.inc")
-    set(RR_WIFI_WRAP 1)
+    if(PICO_CYW43_SUPPORTED AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local/wifi_psk_wrap.inc")
+        set(RR_WIFI_WRAP 1)
 endif()
 
 add_executable(lcc_node
@@ -67,9 +67,22 @@ add_executable(lcc_node
     tests/test_pin_map.c
     tests/test_lcc.c
     third_party/Unity/src/unity.c)
-target_include_directories(lcc_node PRIVATE include third_party/Unity/src)
+target_include_directories(lcc_node PRIVATE include third_party/Unity/src
+    "${CMAKE_CURRENT_SOURCE_DIR}/local")
 if(RR_WIFI_WRAP)
-    target_include_directories(lcc_node PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/local")
+    target_compile_definitions(lcc_node PRIVATE 
+        MBEDTLS_CONFIG_FILE="rr_mbedtls_config.h")
+    target_include_directories(lcc_node PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/local"
+        "${PICO_SDK_PATH}/lib/mbedtls/include")
+    target_sources(lcc_node PRIVATE
+        "${PICO_SDK_PATH}/lib/mbedtls/library/aes.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/gcm.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/hkdf.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/md.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/sha256.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/block_cipher.c"
+        "${PICO_SDK_PATH}/lib/mbedtls/library/constant_time.c")
 endif()
 target_compile_definitions(lcc_node PRIVATE
     RR_LCC_TRANSPORT="${LCC_TRANSPORT}"
@@ -77,8 +90,16 @@ target_compile_definitions(lcc_node PRIVATE
     RR_PICO_BOARD="${PICO_BOARD}"
     RR_KEY0_GPIO=${RR_KEY0_GPIO}
     RR_WIFI_WRAP=${RR_WIFI_WRAP}
-    RR_FIRMWARE_TESTS=1
-    DEBUG)
+    RR_FIRMWARE_TESTS=0
+    UNITY_SUPPORT_64
+    UNITY_INCLUDE_64)
+if(LCD_PANEL STREQUAL "RES35")
+    target_sources(lcc_node PRIVATE src/lcd2.c)
+    target_compile_definitions(lcc_node PRIVATE RR_PANEL_LCD2=1)
+    target_link_libraries(lcc_node hardware_spi)
+else()
+    target_compile_definitions(lcc_node PRIVATE RR_PANEL_LCD2=0)
+endif()
 
 pico_enable_stdio_usb(lcc_node 1)
 pico_enable_stdio_uart(lcc_node 0)
@@ -91,8 +112,7 @@ if(PICO_CYW43_SUPPORTED)
         pico_cyw43_arch_lwip_sys_freertos
         FreeRTOS-Kernel-Heap4)
     if(RR_WIFI_WRAP)
-        target_compile_definitions(lcc_node PRIVATE MBEDTLS_NO_PLATFORM_ENTROPY)
-        target_link_libraries(lcc_node pico_mbedtls)
+        # Software AES only. pico_mbedtls hardware AES breaks GCM tags.
     endif()
 else()
     target_compile_definitions(lcc_node PRIVATE RR_LED_CYW43=0)
