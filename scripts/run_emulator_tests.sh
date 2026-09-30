@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Run firmware under qemu-system-arm (default) or Renode. Does NOT flash hardware.
-# Usage: bash scripts/run_emulator_tests.sh [--elf PATH] [--board pico2_w] [--renode] [--timeout SEC]
+# Run firmware under Renode (default). Optional --qemu is experimental for Pico ELFs.
+# Usage: bash scripts/run_emulator_tests.sh [--elf PATH] [--board pico2_w] [--qemu] [--timeout SEC]
 # Prefer: source /workspace/env/emulators.sh
+# Note: stock qemu-system-arm has no pico/rp2350 machine; --qemu typically exits 134 (Lockup).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
