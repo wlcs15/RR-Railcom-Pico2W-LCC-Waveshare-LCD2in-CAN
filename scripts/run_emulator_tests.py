@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run firmware Unity/self-check under qemu-system-arm (default) or Renode.
+"""Run firmware Unity/self-check under Renode (default) or optional QEMU.
 
 Does NOT flash hardware. Wraps the same firmware image used by
 scripts/run_target_tests.* (lcc_node.elf) under a system emulator.
@@ -7,17 +7,20 @@ scripts/run_target_tests.* (lcc_node.elf) under a system emulator.
 Usage:
   bash scripts/run_emulator_tests.sh
   bash scripts/run_emulator_tests.sh --elf build/firmware/pico2_w/lcc_node.elf
-  bash scripts/run_emulator_tests.sh --board pico_w --renode
+  bash scripts/run_emulator_tests.sh --qemu   # experimental; expected FAIL on Pico ELF
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run_emulator_tests.ps1
 
-Default architecture: RP2350 / Pico 2 W → qemu-system-arm cortex-m33
-  (mps2-an505, fallback musca-b1). Optional --renode for RP2040 / pico_w ELFs.
+Default: Renode smoke (flash@0x10000000 + SRAM@0x20000000).
+  Stock qemu-system-arm has NO pico/rp2040/rp2350 machine. Loading a Pico
+  ELF on mps2-an505/musca-b1 HardFaults (Pico SDK touches SIO @ 0xd0000000)
+  then QEMU aborts with Lockup / SIGABRT (exit 134). Keep --qemu for
+  experiments only.
 
 Exit codes:
   0     emulator exited cleanly
   124   timeout (treated as smoke OK — firmware often does not halt)
   2     missing tools / ELF
-  other emulator crash (known: QEMU may SIGABRT/134 on some Pico ELFs)
+  other emulator crash (QEMU Lockup/134 is expected for Pico ELFs)
 
 Prefer PATH with /workspace/tools/bin (source /workspace/env/emulators.sh).
 """
@@ -223,7 +226,16 @@ def main(argv=None):
     ap.add_argument("--elf", default="", help="Firmware ELF (default: build/firmware/<board>/lcc_node.elf)")
     ap.add_argument("--board", default="pico2_w", help="PICO_BOARD when building (default pico2_w)")
     ap.add_argument("--timeout", type=int, default=90, help="Seconds (default 90)")
-    ap.add_argument("--renode", action="store_true", help="Use Renode RP2040 smoke instead of qemu-m33")
+    ap.add_argument(
+        "--qemu",
+        action="store_true",
+        help="Experimental: qemu-system-arm mps2-an505/musca-b1 (unsupported for Pico ELF; Lockup/134)",
+    )
+    ap.add_argument(
+        "--renode",
+        action="store_true",
+        help="Force Renode (default; kept for compatibility)",
+    )
     ap.add_argument("--no-build", action="store_true", help="Do not build if ELF missing")
     ap.add_argument(
         "--log",
@@ -254,18 +266,23 @@ def main(argv=None):
 
     print("EMU elf=%s" % elf)
     print("EMU note: does not flash hardware; host Unity remains scripts/run_tests.*")
-    if args.renode:
-        rc = _run_renode(elf, args.timeout, log_base)
-    else:
+    if args.qemu and not args.renode:
+        print(
+            "EMU WARNING: --qemu is experimental. Stock qemu-system-arm has no "
+            "Pico/RP2350 machine; Pico SDK boot touches SIO @ 0xd0000000 and "
+            "typically HardFaults → QEMU Lockup / exit 134."
+        )
         rc = _run_qemu(elf, args.timeout, log_base)
+    else:
+        rc = _run_renode(elf, args.timeout, log_base)
 
     if rc in (0, 124):
         print("EMU smoke RESULT: PASS (exit=%s)" % rc)
         return 0
     print(
         "EMU smoke RESULT: FAIL (exit=%s). "
-        "Known limitation: qemu-system-arm may SIGABRT on some Pico ELFs; "
-        "wrapper still useful for CI wiring." % rc
+        "If this was --qemu: unsupported for Pico ELF on mps2/musca "
+        "(no RP2040/RP2350 machine in stock QEMU)." % rc
     )
     return rc if rc else 1
 

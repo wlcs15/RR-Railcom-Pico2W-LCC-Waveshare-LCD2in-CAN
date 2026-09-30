@@ -1,4 +1,4 @@
-# Run firmware under qemu-system-arm (default) or Renode. Does NOT flash hardware.
+# Run firmware under Renode (default). Optional --qemu is experimental (Pico ELF → Lockup/134).
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_emulator_tests.ps1
 # Prefer /workspace/tools/bin on PATH when present (bot box).
 $ErrorActionPreference = "Stop"
