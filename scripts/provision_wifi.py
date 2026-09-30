@@ -9,7 +9,7 @@ import sys
 from hashlib import sha256
 
 try:
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 except ImportError:
     sys.stderr.write("Python package cryptography is required\n")
     raise SystemExit(1)
@@ -18,8 +18,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUT = os.path.join(ROOT, "local", "wifi_psk_wrap.inc")
 SALT = b"owlthree-pico2w-wifi-wrap-v1"
 # This Pico 2 W, from its USB self-check. Not a password.
-MAC = bytes.fromhex("2CCF67E7AF5C")
-UID = bytes.fromhex("DB6C98D898C72CF7")
+MAC = bytes.fromhex("2CCF67E7AFC4") 
+UID = bytes.fromhex("acf6f0157fb026e5")
 NODE = bytes.fromhex("05010101A505")
 
 
@@ -49,10 +49,16 @@ def main():
     if not psk or len(psk) > 64:
         sys.stderr.write("Password must be 1..64 bytes\n")
         return 1
+    key = derive_key()
     nonce = os.urandom(12)
-    packed = AESGCM(derive_key()).encrypt(nonce, psk.encode("utf-8"), None)
-    tag, cipher = packed[-16:], packed[:-16]
-    blob = bytes([1]) + nonce + tag + bytes([len(psk)]) + cipher.ljust(64, b"\x00")
+    iv = nonce + b"\x00" * 4
+    cipher = (
+        Cipher(algorithms.AES(key), modes.CTR(iv))
+        .encryptor()
+        .update(psk.encode("utf-8"))
+    )
+    tag = hmac.new(key, nonce + cipher, sha256).digest()[:16]
+    blob = bytes([2]) + nonce + tag + bytes([len(psk)]) + cipher.ljust(64, b"\x00")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     hex_bytes = ", ".join("0x%02X" % b for b in blob)
     with open(OUT, "w", encoding="utf-8") as handle:
@@ -62,7 +68,6 @@ def main():
     print("Wrote %s" % OUT)
     print("Rebuild with scripts/build_firmware.sh and flash the Pico 2 W image.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

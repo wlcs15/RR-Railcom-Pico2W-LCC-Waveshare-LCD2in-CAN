@@ -124,13 +124,13 @@ static void print_unique_id(void)
     int i;
 
     pico_get_unique_board_id(&id);
-#ifdef DEBUG
+//#ifdef DEBUG
     printf("SPI flash unique ID: ");
     for (i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; i++) {
         printf("%02X", id.id[i]);
     }
     printf("\n");
-#endif
+//#endif
 }
 
 static void print_mac(const uint8_t mac[6])
@@ -452,7 +452,9 @@ static void start_board(void)
 #endif
 #endif
 #if RR_LED_CYW43
-    start_radio();
+    
+//ToDo CLS: MAY NEED TO ADD A DELAY HERE
+   start_radio();
 #else
     printf("TARGET wifi absent\n");
     gpio_init(PICO_DEFAULT_LED_PIN);

@@ -93,7 +93,7 @@ target_compile_definitions(lcc_node PRIVATE
     RR_FIRMWARE_TESTS=0
     UNITY_SUPPORT_64
     UNITY_INCLUDE_64)
-if(LCD_PANEL STREQUAL "RES35")
+if(LCD_PANEL STREQUAL "LCD2")
     target_sources(lcc_node PRIVATE src/lcd2.c)
     target_compile_definitions(lcc_node PRIVATE RR_PANEL_LCD2=1)
     target_link_libraries(lcc_node hardware_spi)
