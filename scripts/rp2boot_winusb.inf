@@ -1,0 +1,35 @@
+; Binds the Pico BOOTSEL picoboot interface to the inbox WinUSB driver.
+; Raspberry Pi documents this device as "RP2 Boot". Windows shows a yellow
+; mark until WinUSB is installed. Mass storage (interface 0) is left alone.
+[Version]
+Signature   = "$Windows NT$"
+Class       = USBDevice
+ClassGuid   = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider    = %ManufacturerName%
+DriverVer   = 09/21/2026,1.0.0.0
+
+[Manufacturer]
+%ManufacturerName% = Devices,NTamd64
+
+[Devices.NTamd64]
+%RP2040.DeviceDesc% = WinUSB_Install, USB\VID_2E8A&PID_0003&MI_01
+%RP2350.DeviceDesc% = WinUSB_Install, USB\VID_2E8A&PID_000F&MI_01
+
+[WinUSB_Install]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[WinUSB_Install.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[WinUSB_Install.HW]
+AddReg = WinUSB_AddReg
+
+[WinUSB_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{A5DCBF10-6530-11D2-901F-00C04FB951ED}"
+
+[Strings]
+ManufacturerName   = "OwlThree"
+RP2040.DeviceDesc  = "RP2 Boot"
+RP2350.DeviceDesc  = "RP2350 Boot"
