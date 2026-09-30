@@ -79,3 +79,6 @@ local/
 # Python
 __pycache__/
 *.pyc
+
+# ntfs-3g names a still-open deleted file .fuse_hidden<id>
+.fuse_hidden*
