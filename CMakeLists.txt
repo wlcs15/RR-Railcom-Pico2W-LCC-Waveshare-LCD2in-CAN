@@ -104,6 +104,7 @@ target_compile_definitions(lcc_node PRIVATE
     RR_FIRMWARE_TESTS=0
     UNITY_SUPPORT_64
     UNITY_INCLUDE_64)
+<<<<<<< HEAD
 if(LCD_PANEL STREQUAL "RES35")
 <<<<<<< HEAD
     target_sources(lcc_node PRIVATE src/restouch35.c)
@@ -117,6 +118,9 @@ if(LCC_TRANSPORT STREQUAL "CAN" OR LCC_TRANSPORT STREQUAL "BOTH")
     target_sources(lcc_node PRIVATE src/xl2515.c)
     target_link_libraries(lcc_node hardware_spi)
 =======
+=======
+if(LCD_PANEL STREQUAL "LCD2")
+>>>>>>> c34c195 (LCD2 CMake wiring, flash -t, and Pico 2W wrap v2 provision)
     target_sources(lcc_node PRIVATE src/lcd2.c)
     target_compile_definitions(lcc_node PRIVATE RR_PANEL_LCD2=1)
     target_link_libraries(lcc_node hardware_spi)
