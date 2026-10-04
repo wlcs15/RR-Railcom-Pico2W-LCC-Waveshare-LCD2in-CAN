@@ -30,9 +30,13 @@ if(NOT LCD_PANEL MATCHES "^(NONE|LCD2|RES35)$")
     message(FATAL_ERROR "LCD_PANEL must be NONE, LCD2, or RES35 (got '${LCD_PANEL}')")
 endif()
 if(LCD_PANEL STREQUAL "RES35")
+<<<<<<< HEAD
     if(NOT PICO_BOARD STREQUAL "pico_w" OR NOT LCC_TRANSPORT STREQUAL "WIFI")
         message(FATAL_ERROR "LCD_PANEL=RES35 is only the Pico W Wi-Fi preview. It shares GP5 and GP21 with Pico-CAN-B, so CAN and BOTH are refused.")
     endif()
+=======
+    message(FATAL_ERROR "LCD_PANEL=RES35 is only the Pico W Wi-Fi preview.")
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 endif()
 if(NOT RR_KEY0_GPIO MATCHES "^[0-9]+$")
     message(FATAL_ERROR "RR_KEY0_GPIO must be an integer (got '${RR_KEY0_GPIO}')")
@@ -55,8 +59,13 @@ endif()
 add_subdirectory("${RR_FREERTOS_PORT}" freertos_kernel)
 
 set(RR_WIFI_WRAP 0)
+<<<<<<< HEAD
 if(PICO_CYW43_SUPPORTED AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local/wifi_psk_wrap.inc")
     set(RR_WIFI_WRAP 1)
+=======
+    if(PICO_CYW43_SUPPORTED AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local/wifi_psk_wrap.inc")
+        set(RR_WIFI_WRAP 1)
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 endif()
 
 add_executable(lcc_node
@@ -69,7 +78,8 @@ add_executable(lcc_node
     tests/test_pin_map.c
     tests/test_lcc.c
     third_party/Unity/src/unity.c)
-target_include_directories(lcc_node PRIVATE include third_party/Unity/src)
+target_include_directories(lcc_node PRIVATE include third_party/Unity/src
+    "${CMAKE_CURRENT_SOURCE_DIR}/local")
 if(RR_WIFI_WRAP)
     target_compile_definitions(lcc_node PRIVATE 
         MBEDTLS_CONFIG_FILE="rr_mbedtls_config.h")
@@ -95,6 +105,7 @@ target_compile_definitions(lcc_node PRIVATE
     UNITY_SUPPORT_64
     UNITY_INCLUDE_64)
 if(LCD_PANEL STREQUAL "RES35")
+<<<<<<< HEAD
     target_sources(lcc_node PRIVATE src/restouch35.c)
     target_compile_definitions(lcc_node PRIVATE RR_PANEL_RES35=1)
     target_link_libraries(lcc_node hardware_spi)
@@ -105,6 +116,13 @@ endif()
 if(LCC_TRANSPORT STREQUAL "CAN" OR LCC_TRANSPORT STREQUAL "BOTH")
     target_sources(lcc_node PRIVATE src/xl2515.c)
     target_link_libraries(lcc_node hardware_spi)
+=======
+    target_sources(lcc_node PRIVATE src/lcd2.c)
+    target_compile_definitions(lcc_node PRIVATE RR_PANEL_LCD2=1)
+    target_link_libraries(lcc_node hardware_spi)
+else()
+    target_compile_definitions(lcc_node PRIVATE RR_PANEL_LCD2=0)
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 endif()
 
 pico_enable_stdio_usb(lcc_node 1)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the LCC node image for pico2_w, pico2, and pico_w."""
+"""Build the LCC node image for pico2_w (LCD2), plus compile-check boards."""
 from __future__ import print_function
 
 import os
@@ -30,7 +30,7 @@ def main():
             "Ninja",
             "-DPICO_BOARD=%s" % board,
             "-DLCC_TRANSPORT=WIFI",
-            "-DLCD_PANEL=NONE",
+            "-DLCD_PANEL=%s" % ("LCD2" if board == "pico2_w" else "NONE"),            
             "-DRR_KEY0_GPIO=15",
         ]
         print("configure %s" % board)

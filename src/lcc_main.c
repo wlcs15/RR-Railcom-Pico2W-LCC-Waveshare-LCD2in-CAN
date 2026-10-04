@@ -10,7 +10,11 @@
 #include "gridconnect.h"
 #include "lcc_login.h"
 #include "lcc_node_services.h"
+<<<<<<< HEAD
 #include "restouch35.h"
+=======
+#include "lcd2.h"
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 
 #include "pico/stdio_usb.h"
 #include "pico/stdio.h"
@@ -45,9 +49,9 @@ void rr_uart_raw_banner(void);
 #define RR_PICO_BOARD "unset"
 #endif
 
+#include "hub_host.h"
 #if RR_LED_CYW43 && RR_WIFI_WRAP
 #include "wifi_psk_wrap.inc"
-#include "hub_host.h"
 #include "mbedtls/gcm.h"
 #include "mbedtls/aes.h"
 #include "mbedtls/hkdf.h"
@@ -58,6 +62,7 @@ void rr_uart_raw_banner(void);
 #include <stddef.h>
 #include <stdlib.h>
 
+<<<<<<< HEAD
 #if !RR_LED_CYW43
 #include "tusb.h"
 #endif
@@ -66,6 +71,8 @@ void rr_uart_raw_banner(void);
 #include "xl2515.h"
 #endif
 
+=======
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 int64_t mbedtls_ms_time(void)
 {
     return 0;
@@ -100,6 +107,15 @@ static void panel_show(void)
     /* JMRI web port 12080 is not probed. That icon stays dim. Touch is not read. */
     rr_restouch_status(g_wifi_icon, g_lcc_icon, g_jmri_icon);
 }
+<<<<<<< HEAD
+=======
+#elseif RR_PANEL_LCD2 
+static void panel_show(void)
+{
+    /* JMRI web port 12080 is not probed yet; keep that icon dim until it is. */
+    rr_lcd2_status(g_wifi_icon, g_lcc_icon, g_jmri_icon);
+}
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 #else
 static void panel_show(void) {}
 #endif
@@ -432,6 +448,7 @@ static int checks_ok(void)
 }
 static volatile uint32_t g_can_irq;
 
+<<<<<<< HEAD
 static void can_int_isr(uint gpio, uint32_t events)
 {
     (void)events;
@@ -457,6 +474,18 @@ static void start_board(void)
     printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
 #endif
     rr_restouch_init();
+=======
+static void start_board(void)
+{
+#if RR_PANEL_RES35
+#ifdef DEBUG
+    printf("TARGET lcd enter %s:%d\n", __FILE__, __LINE__);
+    //rr_restouch_init();
+#endif
+#if RR_PANEL_LCD2 
+    rr_lcd2_init();
+#endif
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 #ifdef DEBUG
     printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
@@ -470,6 +499,7 @@ static void start_board(void)
     printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
 #endif
+<<<<<<< HEAD
 
 #if !RR_LED_CYW43
 #ifdef HACK
@@ -490,6 +520,8 @@ static void start_board(void)
     g_can_ready = 1;
 #endif
 
+=======
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 #if RR_LED_CYW43
     start_radio();
 #else
@@ -509,6 +541,7 @@ static void blink_led(int led_on)
 #else
     gpio_put(PICO_DEFAULT_LED_PIN, led_on);
 #endif
+<<<<<<< HEAD
 
 // Debug added on 24-Sep-2026 @ 2:43 PM CST to help debug why with physical LCC/CAN wired there are no bytes received
     printf("TARGET can cfg CNF=%02x %02x %02x INTE=%02x RXB0=%02x RXB1=%02x\n",
@@ -518,6 +551,8 @@ static void blink_led(int led_on)
        xl2515_read_reg_byte(CANINTE),
        xl2515_read_reg_byte(RXB0CTRL),
        xl2515_read_reg_byte(RXB1CTRL));
+=======
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 }
 
 static void debug_beat(int led_on)
@@ -536,10 +571,16 @@ static void debug_beat(int led_on)
 
 static TickType_t g_hub_next_try;
 
+<<<<<<< HEAD
 #if RR_LED_CYW43 && RR_WIFI_WRAP
 static void hub_ensure(void)
 {
 #if RR_WIFI_WRAP
+=======
+static void hub_ensure(void)
+{
+#if RR_LED_CYW43 && RR_WIFI_WRAP
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
     TickType_t now = xTaskGetTickCount();
 
     if (!g_ip_text[0]) {
@@ -563,7 +604,11 @@ static TickType_t g_wifi_next_try;
 
 static void wifi_ensure(void)
 {
+<<<<<<< HEAD
 #if RR_WIFI_WRAP
+=======
+#if RR_LED_CYW43 && RR_WIFI_WRAP
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
     TickType_t now = xTaskGetTickCount();
 
     if (g_ip_text[0] || !g_wifi_psk[0]) {
@@ -592,6 +637,7 @@ static void wifi_ensure(void)
     cyw43_arch_lwip_end();
 #endif
 }
+<<<<<<< HEAD
 #endif
 
 #if !RR_LED_CYW43
@@ -612,10 +658,13 @@ static void rr_usb_puts(const char *s)
 }
 #endif
   
+=======
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 
 static void app_task(void *unused)
 {
     (void)unused;
+<<<<<<< HEAD
 #if !RR_LED_CYW43
     rr_usb_puts("TARGET boot\r\n");
     rr_usb_puts("TARGET task\r\n");
@@ -630,6 +679,10 @@ static void app_task(void *unused)
 
     printf("TARGET can irq gpio %d\n", 8);
 
+=======
+    printf("TARGET task\n");
+    start_board();
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
     if (!checks_ok()) {
         while (1) {
             tight_loop_contents();
@@ -645,6 +698,7 @@ static void app_task(void *unused)
 #ifdef DEBUG
         printf("TARGET lcd leave %s:%d\n", __FILE__, __LINE__);
 #endif
+<<<<<<< HEAD
 #if RR_LED_CYW43 && RR_WIFI_WRAP
         wifi_ensure();
         hub_ensure();
@@ -656,6 +710,12 @@ static void app_task(void *unused)
         printf("TARGET can int %d\n", gpio_get(8));
 #endif
 
+=======
+        wifi_ensure();
+        hub_ensure();
+        led_on = !led_on;
+        blink_led(led_on);
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 #ifdef DEBUG        
         printf("TARGET blink/panel %s:%d\n", __FILE__, __LINE__);
 #endif
@@ -685,6 +745,7 @@ static void alive_task(void *unused)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
   vTaskDelete(NULL);
+<<<<<<< HEAD
 }
 #endif
 
@@ -786,6 +847,8 @@ static void can_task(void *unused)
         }
         vTaskDelay(pdMS_TO_TICKS(2));
     }
+=======
+>>>>>>> 030bb2f (Initial smoke test for release blinked the green LED.)
 }
 #endif
 
