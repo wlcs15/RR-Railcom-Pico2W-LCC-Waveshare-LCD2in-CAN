@@ -4,6 +4,7 @@
 #   --clean    start a fresh log (old one kept as .prev) and wipe build/ before each build
 #              (replaces the retired run_matrix_now.sh / run_matrix_clean.sh)
 #   --with-1a  also run path 1a (main@v0.05); dropped weekly because 1d contains main
+#   env CI_ARM_ENSURE_ONLY=1 runs only the ensure_tools step; ENSURE_TOOLS_ARGS=--check for report-only
 set -uo pipefail
 CI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CI_HUB_STUB="${CI_HUB_STUB:-$CI_DIR/../ci_hub_host.h}"
@@ -23,6 +24,21 @@ unset GCC_ROOT
 export CC=/workspace/tools/bin/gcc
 export CXX=/workspace/tools/bin/g++
 
+LOG="${CI_ARM_LOG:-/workspace/analysis/ci-arm.log}"
+mkdir -p "$(dirname "$LOG")"
+if [[ $CLEAN -eq 1 && -f "$LOG" ]]; then mv -f "$LOG" "$LOG.prev"; fi
+
+# Step 1 (standing rule): workspace tool check/repair. Idempotent; FOUND/MISSING/DEFERRED.
+ENSURE_TOOLS="${ENSURE_TOOLS:-/workspace/tools/bin/ensure_tools.sh}"
+if [[ -x "$ENSURE_TOOLS" || -f "$ENSURE_TOOLS" ]]; then
+  ensure_out=$(bash "$ENSURE_TOOLS" ${ENSURE_TOOLS_ARGS:-} 2>&1); ensure_rc=$?
+  printf '%s\n' "$ensure_out" >>"$LOG"
+  echo "$(date -Iseconds) ensure_tools $(printf '%s\n' "$ensure_out" | grep -m1 '^SUMMARY' || echo 'SUMMARY missing') rc=$ensure_rc" | tee -a "$LOG"
+else
+  echo "$(date -Iseconds) ensure_tools DEFERRED (not present)" | tee -a "$LOG"
+fi
+[[ "${CI_ARM_ENSURE_ONLY:-0}" == 1 ]] && exit 0
+
 # Preflight: workspace ARM emulators (qemu-system-arm + Renode; not Espressif/simavr)
 if ! bash "$CI_DIR/check_arm_emulators.sh"; then
   echo "ci_arm_cycle: ARM emulator preflight FAILED — aborting matrix" >&2
@@ -35,9 +51,6 @@ set +e  # never abort the matrix on a single path failure
 # The 2026-10-03 .bak re-enabled set -e after BUILD_FAIL; this file must not.
 
 
-LOG="${CI_ARM_LOG:-/workspace/analysis/ci-arm.log}"
-mkdir -p "$(dirname "$LOG")"
-if [[ $CLEAN -eq 1 && -f "$LOG" ]]; then mv -f "$LOG" "$LOG.prev"; fi
 BUILDS=/workspace/builds
 mkdir -p "$BUILDS"
 
