@@ -1,15 +1,30 @@
 #!/usr/bin/env bash
 # GrokBot-CI-ARM orchestrator — does not modify tracked source; build dirs OK.
+# Usage: bash scripts/ci/ci_arm_cycle.sh [--clean] [--with-1a]
+#   --clean    start a fresh log (old one kept as .prev) and wipe build/ before each build
+#              (replaces the retired run_matrix_now.sh / run_matrix_clean.sh)
+#   --with-1a  also run path 1a (main@v0.05); dropped weekly because 1d contains main
 set -uo pipefail
-source /workspace/env/pico.sh
-source /workspace/env/emulators.sh
+CI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CI_HUB_STUB="${CI_HUB_STUB:-$CI_DIR/../ci_hub_host.h}"
+CLEAN=0; WITH_1A=0
+for arg in "$@"; do
+  case "$arg" in
+    --clean) CLEAN=1 ;;
+    --with-1a) WITH_1A=1 ;;
+    -h|--help) sed -n '2,8p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) echo "ci_arm_cycle: unknown arg $arg" >&2; exit 2 ;;
+  esac
+done
+[[ -f /workspace/env/pico.sh ]] && source /workspace/env/pico.sh
+[[ -f /workspace/env/emulators.sh ]] && source /workspace/env/emulators.sh
 export PATH="/workspace/tools/bin:$PATH"
 unset GCC_ROOT
 export CC=/workspace/tools/bin/gcc
 export CXX=/workspace/tools/bin/g++
 
 # Preflight: workspace ARM emulators (qemu-system-arm + Renode; not Espressif/simavr)
-if ! bash /workspace/tools/ci/check_arm_emulators.sh; then
+if ! bash "$CI_DIR/check_arm_emulators.sh"; then
   echo "ci_arm_cycle: ARM emulator preflight FAILED — aborting matrix" >&2
   exit 2
 fi
@@ -20,7 +35,9 @@ set +e  # never abort the matrix on a single path failure
 # The 2026-10-03 .bak re-enabled set -e after BUILD_FAIL; this file must not.
 
 
-LOG=/workspace/analysis/ci-arm.log
+LOG="${CI_ARM_LOG:-/workspace/analysis/ci-arm.log}"
+mkdir -p "$(dirname "$LOG")"
+if [[ $CLEAN -eq 1 && -f "$LOG" ]]; then mv -f "$LOG" "$LOG.prev"; fi
 BUILDS=/workspace/builds
 mkdir -p "$BUILDS"
 
@@ -148,8 +165,11 @@ install_ci_hub_stub() {
   if ! grep -Rqs '#include "hub_host.h"' "$root/src" 2>/dev/null; then
     return 0
   fi
+  local stub="$root/scripts/ci_hub_host.h"
+  [[ -f "$stub" ]] || stub="$CI_HUB_STUB"
+  if [[ ! -f "$stub" ]]; then log "CI_STUB_MISSING $stub"; return 0; fi
   mkdir -p "$root/local"
-  cp /workspace/tools/ci/stubs/hub_host.h "$root/local/hub_host.h"
+  cp "$stub" "$root/local/hub_host.h"
   log "CI_STUB installed local/hub_host.h dummy RR_HUB_HOST 192.168.1.1 (gitignored; not a source edit)"
   return 0
 }
@@ -166,6 +186,10 @@ script_honors_board_env() {
 run_firmware_build() {
   local root="$1" preferred_board="${2:-}" transport="${3:-}" lcd_hint="${4:-}"
   install_ci_hub_stub "$root"
+  if [[ $CLEAN -eq 1 ]]; then
+    log "CLEAN wiping build dirs under $root"
+    rm -rf "$root/build" "$root/Pico-ResTouch-LCD-X_X_Code/C/build"
+  fi
   # Prefer project scripts when they honor board_hint / LCC_TRANSPORT.
   # Human-tip scripts that hardcode WIFI and ignore argv fall through to cmake
   # so path 1c (tag v1.05) and a pico_w hint still build the requested image.
@@ -281,10 +305,10 @@ run_one() {
       local emulog="$dest/emu-smoke.log"
       set +e
       if [[ "$emu_kind" == "qemu-m33" ]]; then
-        bash /workspace/tools/ci/run_qemu_m33.sh "$elf" 90 "$emulog"
+        bash "$CI_DIR/run_qemu_m33.sh" "$elf" 90 "$emulog"
         emu_rc=$?
       else
-        bash /workspace/tools/ci/run_renode_rp2040.sh "$elf" 90 "$emulog"
+        bash "$CI_DIR/run_renode_rp2040.sh" "$elf" 90 "$emulog"
         emu_rc=$?
       fi
       EMU=$(emu_verdict "$emu_rc")
@@ -316,8 +340,12 @@ RESULTS=()
 log "NOTE: 1b uses branch pico-w-restouch-3.5 tip (tag v1.05 is RP2350-CAN/Transmit-Test, not on restouch)"
 log "NOTE: 1c pins tag v1.05 (RP2350-CAN release); rp2350-can tip is v1.04-1 ahead/sibling"
 
+if [[ $WITH_1A -eq 1 ]]; then
 run_one "1a" "wlcs15/RR-Railcom-Pico2W-LCC-Waveshare-LCD2in-CAN" "main" "v0.05" \
   "$BUILDS/RR-Railcom-Pico2W-main-v0.05" "qemu-m33" "pico2_w" "WIFI" "NONE"
+else
+  log "NOTE: 1a (main@v0.05) dropped from weekly list: pico2-w-display-2.0inch (1d) contains main; use --with-1a to run it"
+fi
 
 run_one "1b" "wlcs15/RR-Railcom-Pico2W-LCC-Waveshare-LCD2in-CAN" "pico-w-restouch-3.5" "" \
   "$BUILDS/RR-Railcom-Pico2W-pico-w-restouch-3.5-v1.05" "renode-rp2040" "pico_w" "WIFI" "NONE"
