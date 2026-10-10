@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # GrokBot-CI-ARM local preflight: verify workspace Debian/Renode ARM emulators.
 # Does not install anything. Does NOT check Espressif QEMU or simavr (other bots).
-# Usage: bash /workspace/tools/ci/check_arm_emulators.sh
+# Usage: bash scripts/ci/check_arm_emulators.sh
 set -uo pipefail
 
 # Prefer workspace wrappers (LD_LIBRARY_PATH / portable home) via env
@@ -14,9 +14,9 @@ export PATH="/workspace/tools/bin:${PATH:-}"
 missing=0
 warns=0
 
-ok()   { printf "  OK       %-22s %s\n" "$1" "$2"; }
+ok()   { printf "  FOUND    %-22s %s\n" "$1" "$2"; }
 fail() { printf "  MISSING  %-22s %s\n" "$1" "$2"; missing=1; }
-warn() { printf "  WARN     %-22s %s\n" "$1" "$2"; warns=1; }
+warn() { printf "  DEFERRED %-22s %s\n" "$1" "$2"; warns=1; }
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
