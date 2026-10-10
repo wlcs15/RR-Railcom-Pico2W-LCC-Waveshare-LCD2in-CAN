@@ -82,8 +82,8 @@ fi
 
 echo ""
 echo "=== Skipped (other CI bots) ==="
-echo "  (skip)   Espressif QEMU / qemu-system-xtensa / qemu-system-riscv32"
-echo "  (skip)   simavr"
+echo "  DEFERRED Espressif QEMU / qemu-system-xtensa / qemu-system-riscv32"
+echo "  DEFERRED simavr"
 
 echo ""
 if [[ "$missing" -ne 0 ]]; then
@@ -93,7 +93,7 @@ if [[ "$missing" -ne 0 ]]; then
   exit 1
 fi
 if [[ "$warns" -ne 0 ]]; then
-  echo "RESULT: required ARM emulators present (optional WARN above)"
+  echo "RESULT: required ARM emulators present (optional DEFERRED above)"
   exit 0
 fi
 echo "RESULT: required ARM emulators present"
