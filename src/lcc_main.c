@@ -17,6 +17,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#ifndef RR_HUB_HOST
+#define RR_HUB_HOST "192.168.1.1"
+#endif
+
 int rr_run_all_tests(void);
 void rr_uart_ring_init(void);
 void rr_uart_raw_banner(void);
