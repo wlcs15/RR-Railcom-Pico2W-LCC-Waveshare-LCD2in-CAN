@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
-# Run firmware under Renode (default). Optional --qemu is experimental for Pico ELFs.
-# Usage: bash scripts/run_emulator_tests.sh [--elf PATH] [--board pico2_w] [--qemu] [--timeout SEC]
-# Prefer: source /workspace/env/emulators.sh
-# Note: stock qemu-system-arm has no pico/rp2350 machine; --qemu typically exits 134 (Lockup).
+# Shared emulator smoke: Renode default, --qemu experimental (Pico ELF -> Lockup/134). Does NOT flash.
+# Usage: bash scripts/run_emulator_tests.sh [--elf PATH] [--board B] [--timeout SEC] [--qemu] [--no-build]
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-if [[ -d /workspace/tools/bin ]]; then
-  export PATH="/workspace/tools/bin:${PATH}"
-fi
+if [[ -d /workspace/tools/bin ]]; then export PATH="/workspace/tools/bin:${PATH}"; fi
 if [[ -f /workspace/env/emulators.sh ]]; then
   # shellcheck source=/dev/null
   source /workspace/env/emulators.sh
