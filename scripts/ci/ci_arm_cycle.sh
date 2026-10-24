@@ -3,7 +3,7 @@
 # Usage: bash scripts/ci/ci_arm_cycle.sh [--clean] [--with-1a]
 #   --clean    start a fresh log (old one kept as .prev) and wipe build/ before each build
 #              (replaces the retired run_matrix_now.sh / run_matrix_clean.sh)
-#   --with-1a  also run path 1a (main@v0.05); dropped weekly because 1d contains main
+#   --with-1a  also run path 1a (main tip, so fixes on main such as 02e9374 are built and tested)
 #   env CI_ARM_ENSURE_ONLY=1 runs only the ensure_tools step; ENSURE_TOOLS_ARGS=--check for report-only
 set -uo pipefail
 CI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -354,10 +354,10 @@ log "NOTE: 1b uses branch pico-w-restouch-3.5 tip (tag v1.05 is RP2350-CAN/Trans
 log "NOTE: 1c pins tag v1.05 (RP2350-CAN release); rp2350-can tip is v1.04-1 ahead/sibling"
 
 if [[ $WITH_1A -eq 1 ]]; then
-run_one "1a" "wlcs15/RR-Railcom-Pico2W-LCC-Waveshare-LCD2in-CAN" "main" "v0.05" \
-  "$BUILDS/RR-Railcom-Pico2W-main-v0.05" "qemu-m33" "pico2_w" "WIFI" "NONE"
+run_one "1a" "wlcs15/RR-Railcom-Pico2W-LCC-Waveshare-LCD2in-CAN" "main" "" \
+  "$BUILDS/RR-Railcom-Pico2W-main-tip" "qemu-m33" "pico2_w" "WIFI" "NONE"
 else
-  log "NOTE: 1a (main@v0.05) dropped from weekly list: pico2-w-display-2.0inch (1d) contains main; use --with-1a to run it"
+  log "NOTE: 1a (main tip) not requested; use --with-1a to run it"
 fi
 
 run_one "1b" "wlcs15/RR-Railcom-Pico2W-LCC-Waveshare-LCD2in-CAN" "pico-w-restouch-3.5" "" \
